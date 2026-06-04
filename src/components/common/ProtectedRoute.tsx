@@ -1,6 +1,7 @@
 import React from "react";
 import { Navigate, Outlet } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
+import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 
 /**
  * Protects routes by checking authentication.
@@ -10,8 +11,8 @@ export function ProtectedRoute() {
   const { isAuthenticated, loading } = useAuth();
 
   if (loading) {
-    // Simple loading placeholder; can be replaced with a spinner
-    return <div className="flex h-screen items-center justify-center">Carregando...</div>;
+    // Show a friendly spinner while auth state resolves
+    return <LoadingSpinner />;
   }
 
   return isAuthenticated ? <Outlet /> : <Navigate to="/login" replace />;

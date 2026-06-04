@@ -3,31 +3,58 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import {
+  Card,
+  CardHeader,
+  CardTitle,
+  CardContent,
+  CardDescription,
+} from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTodos, Todo } from "@/hooks/useTodos";
 
 /**
- * Basic To‑Do list stored locally.
- * In a real app this would be persisted via Supabase tables.
+ * Protected home page – shows the authenticated user's To‑Do list.
+ *
+ * The UI is intentionally simple:
+ * - Input + button to add a task
+ * - List with toggle & delete actions
+ * - Sign‑out button
+ *
+ * All data lives in Supabase (`public.todos`) and is kept in sync
+ * via React Query.
  */
 export default function Home() {
-  const [tasks, setTasks] = useState<string[]>([]);
   const [newTask, setNewTask] = useState("");
+  const {
+    todos,
+    isLoading,
+    isError,
+    error,
+    addTodo,
+    isAdding,
+    toggleTodo,
+    isToggling,
+    deleteTodo,
+    isDeleting,
+  } = useTodos();
 
-  const addTask = () => {
+  const handleAdd = () => {
     if (!newTask.trim()) {
       toast.error("Digite uma tarefa.");
       return;
     }
-    setTasks((prev) => [...prev, newTask.trim()]);
+    addTodo(newTask.trim());
     setNewTask("");
-    toast.success("Tarefa adicionada!");
   };
 
-  const removeTask = (index: number) => {
-    setTasks((prev) => prev.filter((_, i) => i !== index));
-    toast.info("Tarefa removida.");
+  const handleToggle = (todo: Todo) => {
+    toggleTodo({ id: todo.id, is_completed: todo.is_completed });
+  };
+
+  const handleDelete = (id: string) => {
+    deleteTodo(id);
   };
 
   const signOut = async () => {
@@ -48,9 +75,11 @@ export default function Home() {
         </Button>
       </div>
 
-      <Card className="max-w-xl mx-auto">
+      {/* ---------- Add new task ---------- */}
+      <Card className="max-w-xl mx-auto mb-8">
         <CardHeader>
           <CardTitle>Adicionar tarefa</CardTitle>
+          <CardDescription>Digite a tarefa e pressione “Adicionar”.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex gap-2">
@@ -58,24 +87,69 @@ export default function Home() {
               placeholder="Nova tarefa"
               value={newTask}
               onChange={(e) => setNewTask(e.target.value)}
+              disabled={isAdding}
             />
-            <Button onClick={addTask}>Adicionar</Button>
+            <Button onClick={handleAdd} disabled={isAdding}>
+              {isAdding ? "Salvando…" : "Adicionar"}
+            </Button>
           </div>
-
-          {tasks.length > 0 && (
-            <ul className="list-disc pl-5 space-y-2">
-              {tasks.map((task, idx) => (
-                <li key={idx} className="flex justify-between items-center">
-                  <span>{task}</span>
-                  <Button size="sm" variant="ghost" onClick={() => removeTask(idx)}>
-                    Remover
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
         </CardContent>
       </Card>
+
+      {/* ---------- List of tasks ---------- */}
+      {isLoading ? (
+        <p className="text-center text-muted-foreground">Carregando tarefas…</p>
+      ) : isError ? (
+        <p className="text-center text-destructive">
+          Erro ao carregar tarefas: {error?.message}
+        </p>
+      ) : (
+        <Card className="max-w-xl mx-auto">
+          <CardHeader>
+            <CardTitle>Suas tarefas</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {todos && todos.length > 0 ? (
+              <ul className="space-y-3">
+                {todos.map((todo) => (
+                  <li
+                    key={todo.id}
+                    className="flex items-center justify-between bg-white rounded-md p-3 shadow-sm"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Button
+                        size="icon"
+                        variant={todo.is_completed ? "secondary" : "outline"}
+                        onClick={() => handleToggle(todo)}
+                        disabled={isToggling}
+                        aria-label={todo.is_completed ? "Marcar como incompleta" : "Marcar como concluída"}
+                      >
+                        {todo.is_completed ? "✅" : "⬜"}
+                      </Button>
+                      <span
+                        className={todo.is_completed ? "line-through text-muted-foreground" : ""}
+                      >
+                        {todo.title}
+                      </span>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      onClick={() => handleDelete(todo.id)}
+                      disabled={isDeleting}
+                      aria-label="Remover tarefa"
+                    >
+                      ✖️
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-center text-muted-foreground">Nenhuma tarefa ainda.</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
