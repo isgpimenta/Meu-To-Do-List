@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/common/Header";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Todo {
   id: string;
@@ -18,39 +19,44 @@ interface Todo {
  */
 export const TodoList = () => {
   const queryClient = useQueryClient();
+  const { user } = useAuth();               // <-- get current user
   const [newTitle, setNewTitle] = useState("");
 
-  // Fetch todos for the current user
+  // Fetch todos only for the logged‑in user
   const {
     data: todos,
     isLoading,
     isError,
     error,
   } = useQuery<Todo[]>({
-    queryKey: ["todos"],
+    queryKey: ["todos", user?.id],
     queryFn: async () => {
+      if (!user) return [];
       const { data, error } = await supabase
         .from("todos")
         .select("*")
+        .eq("user_id", user.id)               // <-- filter by user
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data as Todo[];
     },
+    enabled: !!user,                         // run only when user is known
   });
 
-  // Insert new todo
+  // Insert new todo with the current user_id
   const insertTodo = useMutation({
     mutationFn: async (title: string) => {
+      if (!user) throw new Error("Usuário não autenticado");
       const { data, error } = await supabase
         .from("todos")
-        .insert({ title })
+        .insert({ title, user_id: user.id })   // <-- include user_id
         .select()
         .single();
       if (error) throw new Error(error.message);
       return data as Todo;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos"] });
+      queryClient.invalidateQueries({ queryKey: ["todos", user?.id] });
       toast.success("Tarefa adicionada!");
       setNewTitle("");
     },
@@ -71,7 +77,7 @@ export const TodoList = () => {
       if (error) throw new Error(error.message);
       return data as Todo;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
     onError: (err: any) => toast.error(`Erro ao atualizar: ${err.message}`),
   });
 
@@ -81,7 +87,7 @@ export const TodoList = () => {
       const { error } = await supabase.from("todos").delete().eq("id", id);
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos"] }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
     onError: (err: any) => toast.error(`Erro ao excluir: ${err.message}`),
   });
 
