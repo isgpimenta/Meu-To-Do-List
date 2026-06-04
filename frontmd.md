@@ -1,3 +1,1 @@
-# Frontend Documentation
-
-This is the front matter for the project.
+# Frontend DocumentationThis is the front matter for the project.
