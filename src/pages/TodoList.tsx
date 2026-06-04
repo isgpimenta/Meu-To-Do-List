@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { Header } from "@/components/common/Header";
 
 interface Todo {
   id: string;
@@ -103,7 +104,8 @@ export const TodoList = () => {
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <div className="mx-auto max-w-2xl rounded-lg bg-white p-6 shadow">
-        <h1 className="mb-4 text-2xl font-bold">Minha Lista de Tarefas</h1>
+        <Header />
+        <h2 className="mb-4 text-xl font-semibold">Minha Lista de Tarefas</h2>
 
         {/* New task form */}
         <form
