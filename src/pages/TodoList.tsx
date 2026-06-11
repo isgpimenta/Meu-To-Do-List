@@ -8,10 +8,12 @@ import {
   type ActiveTodoStatus,
 } from "@/contexts/todos/hooks/useTodoList";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import type { TodoStatus } from "@/contexts/todos/todos.types";
 
 /**
  * Página principal da lista de tarefas do usuário autenticado.
  * Inclui confirmação antes de excluir ou marcar como realizada.
+ * Permite filtrar tarefas por status.
  */
 export const TodoList = () => {
   const {
@@ -30,6 +32,9 @@ export const TodoList = () => {
     updateStatus,
     deleteTodo,
   } = useTodoList();
+
+  // Filter state
+  const [filterStatus, setFilterStatus] = useState<TodoStatus | "all">("all");
 
   // State to control which action needs confirmation
   const [confirmState, setConfirmState] = useState<{
@@ -54,6 +59,14 @@ export const TodoList = () => {
     closeConfirm();
   };
 
+  // Filter todos based on selected status
+  const filteredTodos = todos.filter((todo) => {
+    if (filterStatus === "all") return true;
+    const isCompleted = todo.completed || todo.status === "realizada";
+    const displayStatus = isCompleted ? "realizada" : todo.status;
+    return displayStatus === filterStatus;
+  });
+
   if (isLoading) {
     return (
       <div className="flex h-screen items-center justify-center">
@@ -75,6 +88,24 @@ export const TodoList = () => {
       <div className="mx-auto max-w-2xl rounded-lg bg-white p-6 shadow">
         <Header />
         <h2 className="mb-4 text-xl font-semibold">Minha Lista de Tarefas</h2>
+
+        {/* Filter dropdown */}
+        <div className="mb-4 flex items-center gap-2">
+          <label htmlFor="status-filter" className="text-sm font-medium">
+            Filtrar por status:
+          </label>
+          <select
+            id="status-filter"
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value as TodoStatus | "all")}
+            className="rounded border border-input bg-background px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="all">Todas</option>
+            <option value="pendente">Pendente</option>
+            <option value="em andamento">Em andamento</option>
+            <option value="realizada">Realizada</option>
+          </select>
+        </div>
 
         {/* Formulário de nova tarefa */}
         <form
@@ -119,11 +150,12 @@ export const TodoList = () => {
           </button>
         </form>
 
-        {/* Lista de tarefas */}
-        {todos.length > 0 ? (
+        {/* Lista de tarefas filtradas */}
+        {filteredTodos.length > 0 ? (
           <ul className="space-y-2">
-            {todos.map((todo) => {
-              const isCompleted = todo.completed || todo.status === "realizada";
+            {filteredTodos.map((todo) => {
+              const isCompleted =
+                todo.completed || todo.status === "realizada";
               const displayStatus = isCompleted ? "realizada" : todo.status;
 
               return (
@@ -227,7 +259,7 @@ export const TodoList = () => {
           </ul>
         ) : (
           <p className="text-center text-muted-foreground">
-            Nenhuma tarefa encontrada.
+            Nenhuma tarefa encontrada para este status.
           </p>
         )}
 
