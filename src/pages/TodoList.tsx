@@ -62,10 +62,6 @@ export const TodoList = () => {
   const [editStartAt, setEditStartAt] = useState("");
   const [editDueAt, setEditDueAt] = useState("");
 
-  // State to show saved confirmation for new task dates
-  const [savedStartAt, setSavedStartAt] = useState<string | null>(null);
-  const [savedDueAt, setSavedDueAt] = useState<string | null>(null);
-
   const openConfirm = (type: "delete" | "complete", todoId: string) => {
     setConfirmState({ type, todoId });
   };
@@ -112,7 +108,6 @@ export const TodoList = () => {
     updateTodoTitle.mutate({ id: todoId, title: editTitle.trim() });
     
     // Update status if changed
-    // We need to get the current todo to compare status
     const currentTodo = todos.find(t => t.id === todoId);
     if (currentTodo && currentTodo.status !== editStatus) {
       updateStatus.mutate({ id: todoId, status: editStatus });
@@ -126,30 +121,6 @@ export const TodoList = () => {
     });
     
     cancelEditTodo();
-  };
-
-  const saveNewStartAt = () => {
-    if (newStartAt) {
-      setSavedStartAt(newStartAt);
-      setTimeout(() => setSavedStartAt(null), 2000);
-    }
-  };
-
-  const saveNewDueAt = () => {
-    if (newDueAt) {
-      setSavedDueAt(newDueAt);
-      setTimeout(() => setSavedDueAt(null), 2000);
-    }
-  };
-
-  const clearNewStartAt = () => {
-    setNewStartAt("");
-    setSavedStartAt(null);
-  };
-
-  const clearNewDueAt = () => {
-    setNewDueAt("");
-    setSavedDueAt(null);
   };
 
   // Filter todos based on selected status
@@ -244,45 +215,12 @@ export const TodoList = () => {
                 <input
                   type="datetime-local"
                   className={cn(
-                    "w-full rounded border border-input px-3 py-2 pr-20 focus:outline-none focus:ring-2 focus:ring-primary",
-                    newStartAt && "pr-28",
+                    "w-full rounded border border-input px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary",
+                    newStartAt && "pr-20",
                   )}
                   value={newStartAt}
-                  onChange={(e) => {
-                    setNewStartAt(e.target.value);
-                    setSavedStartAt(null);
-                  }}
+                  onChange={(e) => setNewStartAt(e.target.value)}
                 />
-                {newStartAt && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={saveNewStartAt}
-                      className={cn(
-                        "rounded border px-2 py-1.5 text-[10px] transition-colors whitespace-nowrap",
-                        savedStartAt
-                          ? "border-green-500 text-green-700 bg-green-50"
-                          : "border-input text-muted-foreground hover:bg-accent",
-                      )}
-                      disabled={savedStartAt || insertTodo.isPending}
-                      title={savedStartAt ? "Salvo!" : "Salvar"}
-                    >
-                      {savedStartAt ? (
-                        <CheckCircleIcon className="h-3 w-3" />
-                      ) : (
-                        <span>Salvar</span>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={clearNewStartAt}
-                      className="rounded border border-input px-2 py-1.5 text-[10px] text-muted-foreground hover:bg-accent"
-                      title="Limpar"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
 
@@ -296,45 +234,12 @@ export const TodoList = () => {
                 <input
                   type="datetime-local"
                   className={cn(
-                    "w-full rounded border border-input px-3 py-2 pr-20 focus:outline-none focus:ring-2 focus:ring-primary",
-                    newDueAt && "pr-28",
+                    "w-full rounded border border-input px-3 py-2 pr-10 focus:outline-none focus:ring-2 focus:ring-primary",
+                    newDueAt && "pr-20",
                   )}
                   value={newDueAt}
-                  onChange={(e) => {
-                    setNewDueAt(e.target.value);
-                    setSavedDueAt(null);
-                  }}
+                  onChange={(e) => setNewDueAt(e.target.value)}
                 />
-                {newDueAt && (
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                    <button
-                      type="button"
-                      onClick={saveNewDueAt}
-                      className={cn(
-                        "rounded border px-2 py-1.5 text-[10px] transition-colors whitespace-nowrap",
-                        savedDueAt
-                          ? "border-green-500 text-green-700 bg-green-50"
-                          : "border-input text-muted-foreground hover:bg-accent",
-                      )}
-                      disabled={savedDueAt || insertTodo.isPending}
-                      title={savedDueAt ? "Salvo!" : "Salvar"}
-                    >
-                      {savedDueAt ? (
-                        <CheckCircleIcon className="h-3 w-3" />
-                      ) : (
-                        <span>Salvar</span>
-                      )}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={clearNewDueAt}
-                      className="rounded border border-input px-2 py-1.5 text-[10px] text-muted-foreground hover:bg-accent"
-                      title="Limpar"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           </div>
