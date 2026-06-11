@@ -204,100 +204,109 @@ export const TodoList = () => {
             </select>
           </div>
 
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1.5 text-sm text-muted-foreground whitespace-nowrap">
-              <CalendarIcon className="h-3.5 w-3.5" />
-              <span>Início</span>
-            </label>
-            <div className="flex items-center gap-1">
-              <input
-                type="datetime-local"
-                className={cn(
-                  "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+            {/* Início */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5 w-full sm:w-auto">
+              <label className="flex items-center gap-1.5 text-sm text-muted-foreground whitespace-nowrap">
+                <CalendarIcon className="h-3.5 w-3.5" />
+                <span>Início</span>
+              </label>
+              <div className="relative w-full sm:w-auto">
+                <input
+                  type="datetime-local"
+                  className={cn(
+                    "w-full rounded border border-input px-3 py-2 pr-20 focus:outline-none focus:ring-2 focus:ring-primary",
+                    newStartAt && "pr-28",
+                  )}
+                  value={newStartAt}
+                  onChange={(e) => {
+                    setNewStartAt(e.target.value);
+                    setSavedStartAt(null);
+                  }}
+                />
+                {newStartAt && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={saveNewStartAt}
+                      className={cn(
+                        "rounded border px-2 py-1.5 text-[10px] transition-colors whitespace-nowrap",
+                        savedStartAt
+                          ? "border-green-500 text-green-700 bg-green-50"
+                          : "border-input text-muted-foreground hover:bg-accent",
+                      )}
+                      disabled={savedStartAt || insertTodo.isPending}
+                      title={savedStartAt ? "Salvo!" : "Salvar"}
+                    >
+                      {savedStartAt ? (
+                        <CheckCircleIcon className="h-3 w-3" />
+                      ) : (
+                        <span>Salvar</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearNewStartAt}
+                      className="rounded border border-input px-2 py-1.5 text-[10px] text-muted-foreground hover:bg-accent"
+                      title="Limpar"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 )}
-                value={newStartAt}
-                onChange={(e) => {
-                  setNewStartAt(e.target.value);
-                  setSavedStartAt(null);
-                }}
-              />
-              {newStartAt && (
-                <>
-                  <button
-                    type="button"
-                    onClick={saveNewStartAt}
-                    className={cn(
-                      "rounded border px-2 py-2 text-xs transition-colors",
-                      savedStartAt
-                        ? "border-green-500 text-green-700 bg-green-50"
-                        : "border-input text-muted-foreground hover:bg-accent",
-                    )}
-                    disabled={savedStartAt || insertTodo.isPending}
-                    title={savedStartAt ? "Salvo!" : "Salvar data de início"}
-                  >
-                    {savedStartAt ? (
-                      <CheckCircleIcon className="h-3.5 w-3.5" />
-                    ) : (
-                      <span>Salvar</span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={clearNewStartAt}
-                    className="rounded border border-input px-2 py-2 text-xs text-muted-foreground hover:bg-accent"
-                    title="Limpar data de início"
-                  >
-                    ✕
-                  </button>
-                </>
-              )}
+              </div>
             </div>
-            <label className="flex items-center gap-1.5 text-sm text-muted-foreground whitespace-nowrap ml-4">
-              <ClockIcon className="h-3.5 w-3.5" />
-              <span>Prazo</span>
-            </label>
-            <div className="flex items-center gap-1">
-              <input
-                type="datetime-local"
-                className={cn(
-                  "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+
+            {/* Prazo */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-1.5 w-full sm:w-auto">
+              <label className="flex items-center gap-1.5 text-sm text-muted-foreground whitespace-nowrap">
+                <ClockIcon className="h-3.5 w-3.5" />
+                <span>Prazo</span>
+              </label>
+              <div className="relative w-full sm:w-auto">
+                <input
+                  type="datetime-local"
+                  className={cn(
+                    "w-full rounded border border-input px-3 py-2 pr-20 focus:outline-none focus:ring-2 focus:ring-primary",
+                    newDueAt && "pr-28",
+                  )}
+                  value={newDueAt}
+                  onChange={(e) => {
+                    setNewDueAt(e.target.value);
+                    setSavedDueAt(null);
+                  }}
+                />
+                {newDueAt && (
+                  <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={saveNewDueAt}
+                      className={cn(
+                        "rounded border px-2 py-1.5 text-[10px] transition-colors whitespace-nowrap",
+                        savedDueAt
+                          ? "border-green-500 text-green-700 bg-green-50"
+                          : "border-input text-muted-foreground hover:bg-accent",
+                      )}
+                      disabled={savedDueAt || insertTodo.isPending}
+                      title={savedDueAt ? "Salvo!" : "Salvar"}
+                    >
+                      {savedDueAt ? (
+                        <CheckCircleIcon className="h-3 w-3" />
+                      ) : (
+                        <span>Salvar</span>
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearNewDueAt}
+                      className="rounded border border-input px-2 py-1.5 text-[10px] text-muted-foreground hover:bg-accent"
+                      title="Limpar"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 )}
-                value={newDueAt}
-                onChange={(e) => {
-                  setNewDueAt(e.target.value);
-                  setSavedDueAt(null);
-                }}
-              />
-              {newDueAt && (
-                <>
-                  <button
-                    type="button"
-                    onClick={saveNewDueAt}
-                    className={cn(
-                      "rounded border px-2 py-2 text-xs transition-colors",
-                      savedDueAt
-                        ? "border-green-500 text-green-700 bg-green-50"
-                        : "border-input text-muted-foreground hover:bg-accent",
-                    )}
-                    disabled={savedDueAt || insertTodo.isPending}
-                    title={savedDueAt ? "Salvo!" : "Salvar data de prazo"}
-                  >
-                    {savedDueAt ? (
-                      <CheckCircleIcon className="h-3.5 w-3.5" />
-                    ) : (
-                      <span>Salvar</span>
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={clearNewDueAt}
-                    className="rounded border border-input px-2 py-2 text-xs text-muted-foreground hover:bg-accent"
-                    title="Limpar data de prazo"
-                  >
-                    ✕
-                  </button>
-                </>
-              )}
+              </div>
             </div>
           </div>
 
@@ -452,7 +461,7 @@ export const TodoList = () => {
                     </div>
 
                     {/* Botões de ação com confirmação */}
-                    <div className="ml-2 flex flex-col items-center gap-2">
+                    <div className="ml-2 flex flex-col items-center gap-2 shrink-0">
                       <button
                         onClick={() => openConfirm("delete", todo.id)}
                         className="flex flex-col items-center text-sm text-destructive hover:underline"
