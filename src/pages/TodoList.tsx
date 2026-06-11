@@ -241,12 +241,13 @@ export const TodoList = () => {
                     </select>
                   </div>
                 </div>
-                {/* Trash icon above delete button */}
+                {/* Trash icon with label below */}
                 <button                  onClick={() => deleteTodo.mutate(todo.id)}
-                  className="text-sm text-destructive hover:underline flex-shrink-0 ml-2"
+                  className="flex flex-col items-center text-sm text-destructive hover:underline flex-shrink-0 ml-2"
                   disabled={deleteTodo.isPending}
                 >
                   <TrashIcon className="w-4 h-4" aria-label="Excluir" />
+                  <span className="mt-1">Excluir</span>
                 </button>
               </li>
             ))}
