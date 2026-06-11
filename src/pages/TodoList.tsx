@@ -5,15 +5,14 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/common/Header";
 import { useAuth } from "@/hooks/useAuth";
-
-type TodoStatus = "realizada" | "pendente" | "em andamento";
+import { TrashIcon } from "lucide-react";
 
 interface Todo {
   id: string;
   user_id: string;
   title: string;
   completed: boolean;
-  status: TodoStatus;
+  status: "realizada" | "pendente" | "em andamento";
   created_at: string;
 }
 
@@ -25,7 +24,7 @@ export const TodoList = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [newTitle, setNewTitle] = useState("");
-  const [newStatus, setNewStatus] = useState<TodoStatus>("pendente");
+  const [newStatus, setNewStatus] = useState<"realizada" | "pendente" | "em andamento">("pendente");
 
   // Fetch todos only for the logged‑in user
   const {
@@ -91,7 +90,7 @@ export const TodoList = () => {
 
   // Update task status
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: TodoStatus }) => {
+    mutationFn: async ({ id, status }: { id: string; status: "realizada" | "pendente" | "em andamento" }) => {
       const { data, error } = await supabase
         .from("todos")
         .update({ status })
@@ -112,16 +111,19 @@ export const TodoList = () => {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
-    onError: (err: any) => toast.error(`Erro ao excluir: ${err.message}`),
+    onError: (err: any) => {
+      const message = err.message || "Erro desconhecido";
+      toast.error(`Erro ao excluir: ${message}`);
+    },
   });
 
-  const statusOptions: { value: TodoStatus; label: string }[] = [
+  const statusOptions: { value: "realizada" | "pendente" | "em andamento"; label: string }[] = [
     { value: "pendente", label: "Pendente" },
     { value: "em andamento", label: "Em andamento" },
     { value: "realizada", label: "Realizada" },
   ];
 
-  const getStatusBadge = (status: TodoStatus) => {
+  const getStatusBadge = (status: "realizada" | "pendente" | "em andamento") => {
     const config = {
       pendente: { label: "Pendente", classes: "bg-yellow-100 text-yellow-800" },
       "em andamento": { label: "Em andamento", classes: "bg-blue-100 text-blue-800" },
@@ -172,7 +174,7 @@ export const TodoList = () => {
             />
             <select
               value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as TodoStatus)}
+              onChange={(e) => setNewStatus(e.target.value as any)}
               className={cn(
                 "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
               )}
@@ -214,8 +216,7 @@ export const TodoList = () => {
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary flex-shrink-0"
                   />
                   <div className="flex flex-col items-start min-w-0 flex-1">
-                    <span
-                      className={cn(
+                    <span                      className={cn(
                         "text-sm truncate w-full",
                         todo.completed && "line-through text-muted-foreground",
                       )}
@@ -224,7 +225,7 @@ export const TodoList = () => {
                     </span>
                     <select
                       value={todo.status}
-                      onChange={(e) => updateStatus.mutate({ id: todo.id, status: e.target.value as TodoStatus })}
+                      onChange={(e) => updateStatus.mutate({ id: todo.id, status: e.target.value as any })}
                       disabled={updateStatus.isPending}
                       className={cn(
                         "mt-1 px-2 py-0.5 text-xs rounded border border-input bg-background",
@@ -240,12 +241,12 @@ export const TodoList = () => {
                     </select>
                   </div>
                 </div>
-                <button
-                  onClick={() => deleteTodo.mutate(todo.id)}
+                {/* Trash icon above delete button */}
+                <button                  onClick={() => deleteTodo.mutate(todo.id)}
                   className="text-sm text-destructive hover:underline flex-shrink-0 ml-2"
                   disabled={deleteTodo.isPending}
                 >
-                  Excluir
+                  <TrashIcon className="w-4 h-4" aria-label="Excluir" />
                 </button>
               </li>
             ))}
