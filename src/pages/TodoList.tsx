@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/common/Header";
-import { CheckIcon, TrashIcon, CalendarIcon, ClockIcon, CheckCircleIcon } from "lucide-react";
+import { CheckIcon, TrashIcon, CalendarIcon, ClockIcon, CheckCircleIcon, PencilIcon, XIcon } from "lucide-react";
 import {
   getStatusBadge,
   useTodoList,
@@ -17,6 +17,7 @@ import type { TodoStatus } from "@/contexts/todos/todos.types";
  * Inclui confirmação antes de excluir ou marcar como realizada.
  * Permite filtrar tarefas por status.
  * Permite definir data/hora de início e prazo final.
+ * Permite editar o título da tarefa.
  */
 export const TodoList = () => {
   const {
@@ -38,6 +39,7 @@ export const TodoList = () => {
     completeTodo,
     updateStatus,
     updateDates,
+    updateTodoTitle,
     deleteTodo,
     formatDateTime: fmtDateTime,
     toLocalDateTimeString,
@@ -56,6 +58,10 @@ export const TodoList = () => {
   const [editingDatesId, setEditingDatesId] = useState<string | null>(null);
   const [editStartAt, setEditStartAt] = useState("");
   const [editDueAt, setEditDueAt] = useState("");
+
+  // State for editing task title
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
 
   // State to show saved confirmation for new task dates
   const [savedStartAt, setSavedStartAt] = useState<string | null>(null);
@@ -97,6 +103,23 @@ export const TodoList = () => {
       dueAt: toISOString(editDueAt),
     });
     cancelEditDates();
+  };
+
+  const startEditTitle = (todo: { id: string; title: string }) => {
+    setEditingTitleId(todo.id);
+    setEditTitle(todo.title);
+  };
+
+  const cancelEditTitle = () => {
+    setEditingTitleId(null);
+    setEditTitle("");
+  };
+
+  const saveEditTitle = (todoId: string) => {
+    if (editTitle.trim()) {
+      updateTodoTitle.mutate({ id: todoId, title: editTitle.trim() });
+    }
+    cancelEditTitle();
   };
 
   const saveNewStartAt = () => {
@@ -329,6 +352,7 @@ export const TodoList = () => {
                 todo.completed || todo.status === "realizada";
               const displayStatus = isCompleted ? "realizada" : todo.status;
               const isEditingDates = editingDatesId === todo.id;
+              const isEditingTitle = editingTitleId === todo.id;
 
               return (
                 <li
@@ -353,14 +377,39 @@ export const TodoList = () => {
                           className="flex-shrink-0 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                           aria-label="Marcar tarefa como realizada"
                         />
-                        <span
-                          className={cn(
-                            "flex-1 truncate text-sm",
-                            isCompleted && "line-through text-muted-foreground",
-                          )}
-                        >
-                          {todo.title}
-                        </span>
+                        {isEditingTitle ? (
+                          <div className="flex flex-1 items-center gap-2">
+                            <input
+                              type="text"
+                              value={editTitle}
+                              onChange={(e) => setEditTitle(e.target.value)}
+                              className="flex-1 rounded border border-input px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => saveEditTitle(todo.id)}
+                              className="text-xs text-green-700 hover:underline"
+                              disabled={!editTitle.trim() || updateTodoTitle.isPending}
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              onClick={cancelEditTitle}
+                              className="text-xs text-muted-foreground hover:underline"
+                            >
+                              <XIcon className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ) : (
+                          <span
+                            className={cn(
+                              "flex-1 truncate text-sm",
+                              isCompleted && "line-through text-muted-foreground",
+                            )}
+                          >
+                            {todo.title}
+                          </span>
+                        )}
                       </div>
 
                       {/* Status e datas */}
@@ -462,6 +511,16 @@ export const TodoList = () => {
 
                     {/* Botões de ação com confirmação */}
                     <div className="ml-2 flex flex-col items-center gap-2 shrink-0">
+                      <button
+                        onClick={() => startEditTitle(todo)}
+                        className="flex flex-col items-center text-sm text-primary hover:underline"
+                        disabled={isCompleted}
+                        title="Editar tarefa"
+                      >
+                        <PencilIcon className="h-4 w-4" aria-label="Editar" />
+                        <span className="mt-1">Editar</span>
+                      </button>
+
                       <button
                         onClick={() => openConfirm("delete", todo.id)}
                         className="flex flex-col items-center text-sm text-destructive hover:underline"

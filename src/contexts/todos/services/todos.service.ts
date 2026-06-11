@@ -90,6 +90,26 @@ export async function updateTodoDates(input: {
 }
 
 /**
+ * Atualiza o título de uma tarefa.
+ */
+export async function updateTodoTitle(input: {
+  id: string;
+  title: string;
+}): Promise<Todo> {
+  const { data, error } = await supabase
+    .from("todos")
+    .update({ title: input.title })
+    .eq("id", input.id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Tarefa não encontrada.");
+
+  return data;
+}
+
+/**
  * Marca uma tarefa como realizada sem removê-la do banco.
  */
 export async function completeTodo(id: string): Promise<Todo> {
