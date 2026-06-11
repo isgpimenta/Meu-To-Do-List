@@ -1,136 +1,32 @@
-import { useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/common/Header";
-import { useAuth } from "@/hooks/useAuth";
-import { TrashIcon, CheckIcon } from "lucide-react";
-
-type TodoStatus = "pendente" | "em andamento";
-
-interface Todo {
-  id: string;
-  user_id: string;
-  title: string;
-  completed: boolean;
-  status: TodoStatus;
-  created_at: string;
-}
+import { CheckIcon, TrashIcon } from "lucide-react";
+import {
+  getStatusBadge,
+  useTodoList,
+  type ActiveTodoStatus,
+} from "@/contexts/todos/hooks/useTodoList";
 
 /**
- * Displays the authenticated user's to‑do items and allows CRUD operations.
- * Each task now has only two statuses: pendente and em andamento.
+ * Página principal da lista de tarefas do usuário autenticado.
  */
 export const TodoList = () => {
-  const queryClient = useQueryClient();
-  const { user } = useAuth();
-  const [newTitle, setNewTitle] = useState("");
-  const [newStatus, setNewStatus] = useState<TodoStatus>("pendente");
-
-  // Fetch todos only for the logged‑in user
   const {
-    data: todos,
+    todos,
     isLoading,
     isError,
     error,
-  } = useQuery<Todo[]>({
-    queryKey: ["todos", user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      const { data, error } = await supabase
-        .from("todos")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      if (error) throw new Error(error.message);
-      return data as Todo[];
-    },
-    enabled: !!user,
-  });
-
-  // Insert new todo
-  const insertTodo = useMutation({
-    mutationFn: async (title: string) => {
-      if (!user) throw new Error("Usuário não autenticado");
-      const { data, error } = await supabase
-        .from("todos")
-        .insert({ title, user_id: user.id, status: newStatus })
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-      return data as Todo;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["todos", user?.id] });
-      toast.success("Tarefa adicionada!");
-      setNewTitle("");
-      setNewStatus("pendente");
-    },
-    onError: (err: any) => {
-      const message = err.message || "Erro desconhecido";
-      const details = err.code ? ` (Código: ${err.code})` : "";
-      toast.error(`Erro ao adicionar: ${message}${details}`);
-    },
-  });
-
-  // Toggle completed flag (keeps item in list)
-  const toggleTodo = useMutation({
-    mutationFn: async (todo: Todo) => {
-      const { data, error } = await supabase
-        .from("todos")
-        .update({ completed: !todo.completed })
-        .eq("id", todo.id)
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-      return data as Todo;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
-    onError: (err: any) => toast.error(`Erro ao atualizar: ${err.message}`),
-  });
-
-  // Update task status (now only pendente / em andamento)
-  const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: TodoStatus }) => {
-      const { data, error } = await supabase
-        .from("todos")
-        .update({ status })
-        .eq("id", id)
-        .select()
-        .single();
-      if (error) throw new Error(error.message);
-      return data as Todo;
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
-    onError: (err: any) => toast.error(`Erro ao alterar status: ${err.message}`),
-  });
-
-  // Delete todo (used for trash icon and check icon)
-  const deleteTodo = useMutation({
-    mutationFn: async (id: string) => {
-      const { error } = await supabase.from("todos").delete().eq("id", id);
-      if (error) throw new Error(error.message);
-    },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
-    onError: (err: any) => {
-      const message = err.message || "Erro desconhecido";
-      toast.error(`Erro ao excluir: ${message}`);
-    },
-  });
-
-  const statusOptions: { value: TodoStatus; label: string }[] = [
-    { value: "pendente", label: "Pendente" },
-    { value: "em andamento", label: "Em andamento" },
-  ];
-
-  const getStatusBadge = (status: TodoStatus) => {
-    const config = {
-      pendente: { label: "Pendente", classes: "bg-yellow-100 text-yellow-800" },
-      "em andamento": { label: "Em andamento", classes: "bg-blue-100 text-blue-800" },
-    };
-    return config[status];
-  };
+    newTitle,
+    setNewTitle,
+    newStatus,
+    setNewStatus,
+    activeStatusOptions,
+    insertTodo,
+    toggleCompletion,
+    completeTodo,
+    updateStatus,
+    deleteTodo,
+  } = useTodoList();
 
   if (isLoading) {
     return (
@@ -143,7 +39,7 @@ export const TodoList = () => {
   if (isError) {
     return (
       <div className="p-4 text-center text-destructive">
-        Erro ao carregar tarefas: {(error as Error).message}
+        Erro ao carregar tarefas: {error?.message}
       </div>
     );
   }
@@ -154,11 +50,10 @@ export const TodoList = () => {
         <Header />
         <h2 className="mb-4 text-xl font-semibold">Minha Lista de Tarefas</h2>
 
-        {/* New task form with status selector */}
         <form
           className="mb-6 flex flex-col gap-3"
-          onSubmit={(e) => {
-            e.preventDefault();
+          onSubmit={(event) => {
+            event.preventDefault();
             if (newTitle.trim()) insertTodo.mutate(newTitle.trim());
           }}
         >
@@ -170,18 +65,20 @@ export const TodoList = () => {
                 "flex-1 rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
               )}
               value={newTitle}
-              onChange={(e) => setNewTitle(e.target.value)}
+              onChange={(event) => setNewTitle(event.target.value)}
             />
             <select
               value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as TodoStatus)}
+              onChange={(event) =>
+                setNewStatus(event.target.value as ActiveTodoStatus)
+              }
               className={cn(
                 "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
               )}
             >
-              {statusOptions.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
+              {activeStatusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
                 </option>
               ))}
             </select>
@@ -197,79 +94,118 @@ export const TodoList = () => {
           </button>
         </form>
 
-        {/* List of todos */}
-        {todos && todos.length > 0 ? (
+        {todos.length > 0 ? (
           <ul className="space-y-2">
-            {todos.map((todo) => (
-              <li
-                key={todo.id}
-                className={cn(
-                  "flex items-center justify-between rounded border border-input p-3",
-                  todo.completed && "bg-muted",
-                )}
-              >
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <input
-                    type="checkbox"
-                    checked={todo.completed}
-                    onChange={() => toggleTodo.mutate(todo)}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary flex-shrink-0"
-                  />
-                  <div className="flex flex-col items-start min-w-0 flex-1">
-                    <span
-                      className={cn(
-                        "text-sm truncate w-full",
-                        todo.completed && "line-through text-muted-foreground",
+            {todos.map((todo) => {
+              const isCompleted =
+                todo.completed || todo.status === "realizada";
+              const displayStatus = isCompleted ? "realizada" : todo.status;
+
+              return (
+                <li
+                  key={todo.id}
+                  className={cn(
+                    "flex items-center justify-between rounded border border-input p-3",
+                    isCompleted && "bg-muted",
+                  )}
+                >
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={isCompleted}
+                      onChange={() =>
+                        toggleCompletion.mutate({
+                          id: todo.id,
+                          completed: !isCompleted,
+                        })
+                      }
+                      className="flex-shrink-0 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                      aria-label="Marcar tarefa como realizada"
+                    />
+                    <div className="flex min-w-0 flex-1 flex-col items-start">
+                      <span
+                        className={cn(
+                          "w-full truncate text-sm",
+                          isCompleted && "line-through text-muted-foreground",
+                        )}
+                      >
+                        {todo.title}
+                      </span>
+
+                      {isCompleted ? (
+                        <span
+                          className={cn(
+                            "mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                            getStatusBadge(displayStatus).classes,
+                          )}
+                        >
+                          Realizada
+                        </span>
+                      ) : (
+                        <select
+                          value={todo.status}
+                          onChange={(event) =>
+                            updateStatus.mutate({
+                              id: todo.id,
+                              status: event.target.value as ActiveTodoStatus,
+                            })
+                          }
+                          disabled={updateStatus.isPending}
+                          className={cn(
+                            "mt-1 rounded border border-input bg-background px-2 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary",
+                            getStatusBadge(displayStatus).classes,
+                          )}
+                        >
+                          {activeStatusOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
                       )}
-                    >
-                      {todo.title}
-                    </span>
-                    <select
-                      value={todo.status}
-                      onChange={(e) => updateStatus.mutate({ id: todo.id, status: e.target.value as TodoStatus })}
-                      disabled={updateStatus.isPending}
-                      className={cn(
-                        "mt-1 px-2 py-0.5 text-xs rounded border border-input bg-background",
-                        "focus:outline-none focus:ring-1 focus:ring-primary",
-                        getStatusBadge(todo.status).classes,
-                      )}
-                    >
-                      {statusOptions.map((opt) => (
-                        <option key={opt.value} value={opt.value}>
-                          {opt.label}
-                        </option>
-                      ))}
-                    </select>
+                    </div>
                   </div>
-                </div>
 
-                {/* Action icons: trash, check (realizada) */}
-                <div className="flex items-center gap-2 ml-2">
-                  {/* Trash button with label */}
-                  <button
-                    onClick={() => deleteTodo.mutate(todo.id)}
-                    className="flex flex-col items-center text-sm text-destructive hover:underline"
-                    disabled={deleteTodo.isPending}
-                  >
-                    <TrashIcon className="w-4 h-4" aria-label="Excluir" />
-                    <span className="mt-1">Excluir</span>
-                  </button>
+                  <div className="ml-2 flex items-center gap-2">
+                    <button
+                      onClick={() => deleteTodo.mutate(todo.id)}
+                      className="flex flex-col items-center text-sm text-destructive hover:underline"
+                      disabled={deleteTodo.isPending}
+                    >
+                      <TrashIcon className="h-4 w-4" aria-label="Excluir" />
+                      <span className="mt-1">Excluir</span>
+                    </button>
 
-                  {/* Check icon representing "realizada" - clicking deletes the todo */}
-                  <button
-                    onClick={() => deleteTodo.mutate(todo.id)}
-                    className="flex flex-col items-center text-sm text-success hover:underline"
-                    title="Marcar como realizada e remover"
-                  >
-                    <CheckIcon className="w-4 h-4" aria-label="Realizada" />
-                    <span className="mt-1">Realizada</span>
-                  </button>
-                </div>
-              </li>
-            ))}
+                    <button
+                      onClick={() => completeTodo.mutate(todo.id)}
+                      className={cn(
+                        "flex flex-col items-center text-sm hover:underline",
+                        isCompleted
+                          ? "cursor-not-allowed text-muted-foreground"
+                          : "text-green-700",
+                      )}
+                      disabled={completeTodo.isPending || isCompleted}
+                      title={
+                        isCompleted
+                          ? "Tarefa já realizada"
+                          : "Marcar como realizada"
+                      }
+                    >
+                      <CheckIcon
+                        className="h-4 w-4"
+                        aria-label="Marcar como realizada"
+                      />
+                      <span className="mt-1">Realizada</span>
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         ) : (
-          <p className="text-center text-muted-foreground">Nenhuma tarefa ainda.</p>
+          <p className="text-center text-muted-foreground">
+            Nenhuma tarefa encontrada.
+          </p>
         )}
       </div>
     </div>
