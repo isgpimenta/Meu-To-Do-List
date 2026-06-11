@@ -74,7 +74,7 @@ export const TodoList = () => {
     },
   });
 
-  // Toggle completed flag
+  // Toggle completed flag (keeps item in list)
   const toggleTodo = useMutation({
     mutationFn: async (todo: Todo) => {
       const { data, error } = await supabase
@@ -106,7 +106,7 @@ export const TodoList = () => {
     onError: (err: any) => toast.error(`Erro ao alterar status: ${err.message}`),
   });
 
-  // Delete todo
+  // Delete todo (used for trash icon and check icon)
   const deleteTodo = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase.from("todos").delete().eq("id", id);
@@ -255,11 +255,11 @@ export const TodoList = () => {
                     <span className="mt-1">Excluir</span>
                   </button>
 
-                  {/* Check icon representing "realizada" */}
+                  {/* Check icon representing "realizada" - clicking deletes the todo */}
                   <button
-                    onClick={() => toggleTodo.mutate({ ...todo, completed: true })}
+                    onClick={() => deleteTodo.mutate(todo.id)}
                     className="flex flex-col items-center text-sm text-success hover:underline"
-                    title="Marcar como realizada"
+                    title="Marcar como realizada e remover"
                   >
                     <CheckIcon className="w-4 h-4" aria-label="Realizada" />
                     <span className="mt-1">Realizada</span>
