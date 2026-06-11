@@ -65,7 +65,10 @@ export const TodoList = () => {
       setNewStatus("pendente"); // reset to default after adding
     },
     onError: (err: any) => {
-      toast.error(`Erro ao adicionar: ${err.message}`);
+      // Show detailed error for debugging
+      const message = err.message || "Erro desconhecido";
+      const details = err.code ? ` (Código: ${err.code})` : "";
+      toast.error(`Erro ao adicionar: ${message}${details}`);
     },
   });
 
@@ -82,7 +85,10 @@ export const TodoList = () => {
       return data as Todo;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
-    onError: (err: any) => toast.error(`Erro ao atualizar: ${err.message}`),
+    onError: (err: any) => {
+      const message = err.message || "Erro desconhecido";
+      toast.error(`Erro ao atualizar: ${message}`);
+    },
   });
 
   // Delete todo
@@ -92,7 +98,10 @@ export const TodoList = () => {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
-    onError: (err: any) => toast.error(`Erro ao excluir: ${err.message}`),
+    onError: (err: any) => {
+      const message = err.message || "Erro desconhecido";
+      toast.error(`Erro ao excluir: ${message}`);
+    },
   });
 
   if (isLoading) {
