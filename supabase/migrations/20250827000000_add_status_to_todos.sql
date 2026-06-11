@@ -1,0 +1,2 @@
+ALTER TABLE public.todos ADD COLUMN IF NOT EXISTS status TEXT NOT NULL DEFAULT 'pendente';
+ALTER TABLE public.todos ADD CONSTRAINT chk_todo_status CHECK (status IN ('realizada', 'pendente', 'em andamento'));
