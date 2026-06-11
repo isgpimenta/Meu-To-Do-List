@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/common/Header";
-import { CheckIcon, TrashIcon, CalendarIcon, ClockIcon } from "lucide-react";
+import { CheckIcon, TrashIcon, CalendarIcon, ClockIcon, CheckCircleIcon } from "lucide-react";
 import {
   getStatusBadge,
   useTodoList,
@@ -57,6 +57,10 @@ export const TodoList = () => {
   const [editStartAt, setEditStartAt] = useState("");
   const [editDueAt, setEditDueAt] = useState("");
 
+  // State to show saved confirmation for new task dates
+  const [savedStartAt, setSavedStartAt] = useState<string | null>(null);
+  const [savedDueAt, setSavedDueAt] = useState<string | null>(null);
+
   const openConfirm = (type: "delete" | "complete", todoId: string) => {
     setConfirmState({ type, todoId });
   };
@@ -93,6 +97,30 @@ export const TodoList = () => {
       dueAt: toISOString(editDueAt),
     });
     cancelEditDates();
+  };
+
+  const saveNewStartAt = () => {
+    if (newStartAt) {
+      setSavedStartAt(newStartAt);
+      setTimeout(() => setSavedStartAt(null), 2000);
+    }
+  };
+
+  const saveNewDueAt = () => {
+    if (newDueAt) {
+      setSavedDueAt(newDueAt);
+      setTimeout(() => setSavedDueAt(null), 2000);
+    }
+  };
+
+  const clearNewStartAt = () => {
+    setNewStartAt("");
+    setSavedStartAt(null);
+  };
+
+  const clearNewDueAt = () => {
+    setNewDueAt("");
+    setSavedDueAt(null);
   };
 
   // Filter todos based on selected status
@@ -181,26 +209,96 @@ export const TodoList = () => {
               <CalendarIcon className="h-3.5 w-3.5" />
               <span>Início</span>
             </label>
-            <input
-              type="datetime-local"
-              className={cn(
-                "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+            <div className="flex items-center gap-1">
+              <input
+                type="datetime-local"
+                className={cn(
+                  "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+                )}
+                value={newStartAt}
+                onChange={(e) => {
+                  setNewStartAt(e.target.value);
+                  setSavedStartAt(null);
+                }}
+              />
+              {newStartAt && (
+                <>
+                  <button
+                    type="button"
+                    onClick={saveNewStartAt}
+                    className={cn(
+                      "rounded border px-2 py-2 text-xs transition-colors",
+                      savedStartAt
+                        ? "border-green-500 text-green-700 bg-green-50"
+                        : "border-input text-muted-foreground hover:bg-accent",
+                    )}
+                    disabled={savedStartAt || insertTodo.isPending}
+                    title={savedStartAt ? "Salvo!" : "Salvar data de início"}
+                  >
+                    {savedStartAt ? (
+                      <CheckCircleIcon className="h-3.5 w-3.5" />
+                    ) : (
+                      <span>Salvar</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearNewStartAt}
+                    className="rounded border border-input px-2 py-2 text-xs text-muted-foreground hover:bg-accent"
+                    title="Limpar data de início"
+                  >
+                    ✕
+                  </button>
+                </>
               )}
-              value={newStartAt}
-              onChange={(e) => setNewStartAt(e.target.value)}
-            />
+            </div>
             <label className="flex items-center gap-1.5 text-sm text-muted-foreground whitespace-nowrap ml-4">
               <ClockIcon className="h-3.5 w-3.5" />
               <span>Prazo</span>
             </label>
-            <input
-              type="datetime-local"
-              className={cn(
-                "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+            <div className="flex items-center gap-1">
+              <input
+                type="datetime-local"
+                className={cn(
+                  "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+                )}
+                value={newDueAt}
+                onChange={(e) => {
+                  setNewDueAt(e.target.value);
+                  setSavedDueAt(null);
+                }}
+              />
+              {newDueAt && (
+                <>
+                  <button
+                    type="button"
+                    onClick={saveNewDueAt}
+                    className={cn(
+                      "rounded border px-2 py-2 text-xs transition-colors",
+                      savedDueAt
+                        ? "border-green-500 text-green-700 bg-green-50"
+                        : "border-input text-muted-foreground hover:bg-accent",
+                    )}
+                    disabled={savedDueAt || insertTodo.isPending}
+                    title={savedDueAt ? "Salvo!" : "Salvar data de prazo"}
+                  >
+                    {savedDueAt ? (
+                      <CheckCircleIcon className="h-3.5 w-3.5" />
+                    ) : (
+                      <span>Salvar</span>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={clearNewDueAt}
+                    className="rounded border border-input px-2 py-2 text-xs text-muted-foreground hover:bg-accent"
+                    title="Limpar data de prazo"
+                  >
+                    ✕
+                  </button>
+                </>
               )}
-              value={newDueAt}
-              onChange={(e) => setNewDueAt(e.target.value)}
-            />
+            </div>
           </div>
 
           <button
