@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/common/Header";
 import { CheckIcon, TrashIcon } from "lucide-react";
@@ -6,9 +7,11 @@ import {
   useTodoList,
   type ActiveTodoStatus,
 } from "@/contexts/todos/hooks/useTodoList";
+import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 
 /**
  * Página principal da lista de tarefas do usuário autenticado.
+ * Inclui confirmação antes de excluir ou marcar como realizada.
  */
 export const TodoList = () => {
   const {
@@ -27,6 +30,29 @@ export const TodoList = () => {
     updateStatus,
     deleteTodo,
   } = useTodoList();
+
+  // State to control which action needs confirmation
+  const [confirmState, setConfirmState] = useState<{
+    type: "delete" | "complete";
+    todoId: string;
+  } | null>(null);
+
+  const openConfirm = (type: "delete" | "complete", todoId: string) => {
+    setConfirmState({ type, todoId });
+  };
+
+  const closeConfirm = () => setConfirmState(null);
+
+  const handleConfirm = () => {
+    if (!confirmState) return;
+    const { type, todoId } = confirmState;
+    if (type === "delete") {
+      deleteTodo.mutate(todoId);
+    } else {
+      completeTodo.mutate(todoId);
+    }
+    closeConfirm();
+  };
 
   if (isLoading) {
     return (
@@ -50,10 +76,11 @@ export const TodoList = () => {
         <Header />
         <h2 className="mb-4 text-xl font-semibold">Minha Lista de Tarefas</h2>
 
+        {/* Formulário de nova tarefa */}
         <form
           className="mb-6 flex flex-col gap-3"
-          onSubmit={(event) => {
-            event.preventDefault();
+          onSubmit={(e) => {
+            e.preventDefault();
             if (newTitle.trim()) insertTodo.mutate(newTitle.trim());
           }}
         >
@@ -65,20 +92,18 @@ export const TodoList = () => {
                 "flex-1 rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
               )}
               value={newTitle}
-              onChange={(event) => setNewTitle(event.target.value)}
+              onChange={(e) => setNewTitle(e.target.value)}
             />
             <select
               value={newStatus}
-              onChange={(event) =>
-                setNewStatus(event.target.value as ActiveTodoStatus)
-              }
+              onChange={(e) => setNewStatus(e.target.value as ActiveTodoStatus)}
               className={cn(
                 "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
               )}
             >
-              {activeStatusOptions.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
+              {activeStatusOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
                 </option>
               ))}
             </select>
@@ -94,11 +119,11 @@ export const TodoList = () => {
           </button>
         </form>
 
+        {/* Lista de tarefas */}
         {todos.length > 0 ? (
           <ul className="space-y-2">
             {todos.map((todo) => {
-              const isCompleted =
-                todo.completed || todo.status === "realizada";
+              const isCompleted = todo.completed || todo.status === "realizada";
               const displayStatus = isCompleted ? "realizada" : todo.status;
 
               return (
@@ -144,10 +169,10 @@ export const TodoList = () => {
                       ) : (
                         <select
                           value={todo.status}
-                          onChange={(event) =>
+                          onChange={(e) =>
                             updateStatus.mutate({
                               id: todo.id,
-                              status: event.target.value as ActiveTodoStatus,
+                              status: e.target.value as ActiveTodoStatus,
                             })
                           }
                           disabled={updateStatus.isPending}
@@ -166,9 +191,10 @@ export const TodoList = () => {
                     </div>
                   </div>
 
+                  {/* Botões de ação com confirmação */}
                   <div className="ml-2 flex items-center gap-2">
                     <button
-                      onClick={() => deleteTodo.mutate(todo.id)}
+                      onClick={() => openConfirm("delete", todo.id)}
                       className="flex flex-col items-center text-sm text-destructive hover:underline"
                       disabled={deleteTodo.isPending}
                     >
@@ -177,7 +203,7 @@ export const TodoList = () => {
                     </button>
 
                     <button
-                      onClick={() => completeTodo.mutate(todo.id)}
+                      onClick={() => openConfirm("complete", todo.id)}
                       className={cn(
                         "flex flex-col items-center text-sm hover:underline",
                         isCompleted
@@ -191,10 +217,7 @@ export const TodoList = () => {
                           : "Marcar como realizada"
                       }
                     >
-                      <CheckIcon
-                        className="h-4 w-4"
-                        aria-label="Marcar como realizada"
-                      />
+                      <CheckIcon className="h-4 w-4" aria-label="Realizada" />
                       <span className="mt-1">Realizada</span>
                     </button>
                   </div>
@@ -207,6 +230,23 @@ export const TodoList = () => {
             Nenhuma tarefa encontrada.
           </p>
         )}
+
+        {/* Diálogo de confirmação */}
+        <ConfirmDialog
+          open={!!confirmState}
+          onOpenChange={closeConfirm}
+          title={
+            confirmState?.type === "delete"
+              ? "Confirmar exclusão"
+              : "Confirmar conclusão"
+          }
+          description={
+            confirmState?.type === "delete"
+              ? "Esta ação removerá a tarefa permanentemente. Deseja continuar?"
+              : "Marcar a tarefa como realizada a deixará com status \"realizada\". Deseja continuar?"
+          }
+          onConfirm={handleConfirm}
+        />
       </div>
     </div>
   );
