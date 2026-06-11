@@ -6,12 +6,14 @@ import { cn } from "@/lib/utils";
 import { Header } from "@/components/common/Header";
 import { useAuth } from "@/hooks/useAuth";
 
+type TodoStatus = "realizada" | "pendente" | "em andamento";
+
 interface Todo {
   id: string;
   user_id: string;
   title: string;
   completed: boolean;
-  status: "realizada" | "pendente" | "em andamento";
+  status: TodoStatus;
   created_at: string;
 }
 
@@ -21,9 +23,9 @@ interface Todo {
  */
 export const TodoList = () => {
   const queryClient = useQueryClient();
-  const { user } = useAuth();               // <-- get current user
+  const { user } = useAuth();
   const [newTitle, setNewTitle] = useState("");
-  const [newStatus, setNewStatus] = useState<"realizada" | "pendente" | "em andamento">("pendente");
+  const [newStatus, setNewStatus] = useState<TodoStatus>("pendente");
 
   // Fetch todos only for the logged‑in user
   const {
@@ -38,15 +40,15 @@ export const TodoList = () => {
       const { data, error } = await supabase
         .from("todos")
         .select("*")
-        .eq("user_id", user.id)               // <-- filter by user
+        .eq("user_id", user.id)
         .order("created_at", { ascending: false });
       if (error) throw new Error(error.message);
       return data as Todo[];
     },
-    enabled: !!user,                         // run only when user is known
+    enabled: !!user,
   });
 
-  // Insert new todo with the current user_id and selected status
+  // Insert new todo
   const insertTodo = useMutation({
     mutationFn: async (title: string) => {
       if (!user) throw new Error("Usuário não autenticado");
@@ -62,10 +64,9 @@ export const TodoList = () => {
       queryClient.invalidateQueries({ queryKey: ["todos", user?.id] });
       toast.success("Tarefa adicionada!");
       setNewTitle("");
-      setNewStatus("pendente"); // reset to default after adding
+      setNewStatus("pendente");
     },
     onError: (err: any) => {
-      // Show detailed error for debugging
       const message = err.message || "Erro desconhecido";
       const details = err.code ? ` (Código: ${err.code})` : "";
       toast.error(`Erro ao adicionar: ${message}${details}`);
@@ -85,10 +86,23 @@ export const TodoList = () => {
       return data as Todo;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
-    onError: (err: any) => {
-      const message = err.message || "Erro desconhecido";
-      toast.error(`Erro ao atualizar: ${message}`);
+    onError: (err: any) => toast.error(`Erro ao atualizar: ${err.message}`),
+  });
+
+  // Update task status
+  const updateStatus = useMutation({
+    mutationFn: async ({ id, status }: { id: string; status: TodoStatus }) => {
+      const { data, error } = await supabase
+        .from("todos")
+        .update({ status })
+        .eq("id", id)
+        .select()
+        .single();
+      if (error) throw new Error(error.message);
+      return data as Todo;
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
+    onError: (err: any) => toast.error(`Erro ao alterar status: ${err.message}`),
   });
 
   // Delete todo
@@ -98,11 +112,23 @@ export const TodoList = () => {
       if (error) throw new Error(error.message);
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["todos", user?.id] }),
-    onError: (err: any) => {
-      const message = err.message || "Erro desconhecido";
-      toast.error(`Erro ao excluir: ${message}`);
-    },
+    onError: (err: any) => toast.error(`Erro ao excluir: ${err.message}`),
   });
+
+  const statusOptions: { value: TodoStatus; label: string }[] = [
+    { value: "pendente", label: "Pendente" },
+    { value: "em andamento", label: "Em andamento" },
+    { value: "realizada", label: "Realizada" },
+  ];
+
+  const getStatusBadge = (status: TodoStatus) => {
+    const config = {
+      pendente: { label: "Pendente", classes: "bg-yellow-100 text-yellow-800" },
+      "em andamento": { label: "Em andamento", classes: "bg-blue-100 text-blue-800" },
+      realizada: { label: "Realizada", classes: "bg-green-100 text-green-800" },
+    };
+    return config[status];
+  };
 
   if (isLoading) {
     return (
@@ -146,14 +172,16 @@ export const TodoList = () => {
             />
             <select
               value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as any)}
+              onChange={(e) => setNewStatus(e.target.value as TodoStatus)}
               className={cn(
                 "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
               )}
             >
-              <option value="pendente">Pendente</option>
-              <option value="em andamento">Em andamento</option>
-              <option value="realizada">Realizada</option>
+              {statusOptions.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
             </select>
           </div>
           <button
@@ -178,37 +206,44 @@ export const TodoList = () => {
                   todo.completed && "bg-muted",
                 )}
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
                   <input
                     type="checkbox"
                     checked={todo.completed}
                     onChange={() => toggleTodo.mutate(todo)}
-                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                    className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary flex-shrink-0"
                   />
-                  <div className="flex flex-col items-start">
+                  <div className="flex flex-col items-start min-w-0 flex-1">
                     <span
                       className={cn(
-                        "text-sm",
+                        "text-sm truncate w-full",
                         todo.completed && "line-through text-muted-foreground",
                       )}
                     >
                       {todo.title}
                     </span>
-                    <span className={cn(
-                      "mt-1 px-2 py-0.5 text-xs rounded",
-                      todo.status === "pendente" && "bg-yellow-100 text-yellow-800",
-                      todo.status === "em andamento" && "bg-blue-100 text-blue-800",
-                      todo.status === "realizada" && "bg-green-100 text-green-800",
-                    )}>
-                      {todo.status === "pendente" ? "Pendente"
-                        : todo.status === "em andamento" ? "Em andamento"
-                        : "Realizada"}
-                    </span>
+                    <select
+                      value={todo.status}
+                      onChange={(e) => updateStatus.mutate({ id: todo.id, status: e.target.value as TodoStatus })}
+                      disabled={updateStatus.isPending}
+                      className={cn(
+                        "mt-1 px-2 py-0.5 text-xs rounded border border-input bg-background",
+                        "focus:outline-none focus:ring-1 focus:ring-primary",
+                        getStatusBadge(todo.status).classes,
+                      )}
+                    >
+                      {statusOptions.map((opt) => (
+                        <option key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 </div>
                 <button
                   onClick={() => deleteTodo.mutate(todo.id)}
-                  className="text-sm text-destructive hover:underline"
+                  className="text-sm text-destructive hover:underline flex-shrink-0 ml-2"
+                  disabled={deleteTodo.isPending}
                 >
                   Excluir
                 </button>
