@@ -23,6 +23,8 @@ export async function createTodo(input: {
   userId: string;
   title: string;
   status: ActiveTodoStatus;
+  start_date: string; // Formato ISO
+  due_date: string;    // Formato ISO
 }): Promise<Todo> {
   const { data, error } = await supabase
     .from("todos")
@@ -31,6 +33,8 @@ export async function createTodo(input: {
       user_id: input.userId,
       status: input.status,
       completed: false,
+      start_date: input.start_date,
+      due_date: input.due_date,
     })
     .select()
     .single();
