@@ -25,10 +25,6 @@ export const TodoList = () => {
     setNewTitle,
     newStatus,
     setNewStatus,
-    newStartDate,
-    setNewStartDate,
-    newDueDate,
-    setNewDueDate,
     activeStatusOptions,
     insertTodo,
     toggleCompletion,
@@ -62,6 +58,14 @@ export const TodoList = () => {
     }
     closeConfirm();
   };
+
+  // Filter todos based on selected status
+  const filteredTodos = todos.filter((todo) => {
+    if (filterStatus === "all") return true;
+    const isCompleted = todo.completed || todo.status === "realizada";
+    const displayStatus = isCompleted ? "realizada" : todo.status;
+    return displayStatus === filterStatus;
+  });
 
   if (isLoading) {
     return (
@@ -108,12 +112,7 @@ export const TodoList = () => {
           className="mb-6 flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (newTitle.trim()) insertTodo.mutate({
-              title: newTitle,
-              status: newStatus,
-              start_date: newStartDate,
-              due_date: newDueDate,
-            });
+            if (newTitle.trim()) insertTodo.mutate(newTitle.trim());
           }}
         >
           <div className="flex items-center gap-2">
@@ -140,30 +139,6 @@ export const TodoList = () => {
               ))}
             </select>
           </div>
-          <div className="flex items-center gap-2">
-            <label htmlFor="start-date">Data de início</label>
-            <input
-              type="date"
-              id="start-date"
-              value={newStartDate}
-              onChange={(e) => setNewStartDate(e.target.value)}
-              className={cn(
-                "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
-              )}
-            />
-          </div>
-          <div className="flex items-center gap-2">
-            <label htmlFor="due-date">Prazo final</label>
-            <input
-              type="date"
-              id="due-date"
-              value={newDueDate}
-              onChange={(e) => setNewDueDate(e.target.value)}
-              className={cn(
-                "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
-              )}
-            />
-          </div>
           <button
             type="submit"
             className={cn(
@@ -179,7 +154,8 @@ export const TodoList = () => {
         {filteredTodos.length > 0 ? (
           <ul className="space-y-2">
             {filteredTodos.map((todo) => {
-              const isCompleted = todo.completed || todo.status === "realizada";
+              const isCompleted =
+                todo.completed || todo.status === "realizada";
               const displayStatus = isCompleted ? "realizada" : todo.status;
 
               return (
