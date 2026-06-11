@@ -14,7 +14,7 @@ import type { TodoStatus } from "@/contexts/todos/todos.types";
 
 /**
  * Página principal da lista de tarefas do usuário autenticado.
- * Inclui confirmação antes de excluir, marcar como realizada ou alterar datas.
+ * Inclui confirmação antes de excluir ou marcar como realizada.
  * Permite filtrar tarefas por status.
  * Permite definir data/hora de início e prazo final.
  */
@@ -48,10 +48,8 @@ export const TodoList = () => {
 
   // State to control which action needs confirmation
   const [confirmState, setConfirmState] = useState<{
-    type: "delete" | "complete" | "dates";
+    type: "delete" | "complete";
     todoId: string;
-    startAt?: string | null;
-    dueAt?: string | null;
   } | null>(null);
 
   // State for editing dates inline
@@ -59,29 +57,19 @@ export const TodoList = () => {
   const [editStartAt, setEditStartAt] = useState("");
   const [editDueAt, setEditDueAt] = useState("");
 
-  const openConfirm = (
-    type: "delete" | "complete" | "dates",
-    todoId: string,
-    dates?: { startAt?: string | null; dueAt?: string | null }
-  ) => {
-    setConfirmState({ type, todoId, ...dates });
+  const openConfirm = (type: "delete" | "complete", todoId: string) => {
+    setConfirmState({ type, todoId });
   };
 
   const closeConfirm = () => setConfirmState(null);
 
   const handleConfirm = () => {
     if (!confirmState) return;
-    const { type, todoId, startAt, dueAt } = confirmState;
+    const { type, todoId } = confirmState;
     if (type === "delete") {
       deleteTodo.mutate(todoId);
-    } else if (type === "complete") {
+    } else {
       completeTodo.mutate(todoId);
-    } else if (type === "dates") {
-      updateDates.mutate({
-        id: todoId,
-        startAt,
-        dueAt,
-      });
     }
     closeConfirm();
   };
@@ -98,10 +86,13 @@ export const TodoList = () => {
     setEditDueAt("");
   };
 
-  const requestSaveDates = (todoId: string) => {
-    const startAt = toISOString(editStartAt);
-    const dueAt = toISOString(editDueAt);
-    openConfirm("dates", todoId, { startAt, dueAt });
+  const saveEditDates = (todoId: string) => {
+    updateDates.mutate({
+      id: todoId,
+      startAt: toISOString(editStartAt),
+      dueAt: toISOString(editDueAt),
+    });
+    cancelEditDates();
   };
 
   // Filter todos based on selected status
@@ -345,7 +336,7 @@ export const TodoList = () => {
                               className="rounded border border-input px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                             />
                             <button
-                              onClick={() => requestSaveDates(todo.id)}
+                              onClick={() => saveEditDates(todo.id)}
                               className="text-xs text-green-700 hover:underline"
                               disabled={updateDates.isPending}
                             >
@@ -413,16 +404,12 @@ export const TodoList = () => {
           title={
             confirmState?.type === "delete"
               ? "Confirmar exclusão"
-              : confirmState?.type === "complete"
-              ? "Confirmar conclusão"
-              : "Confirmar alteração de datas"
+              : "Confirmar conclusão"
           }
           description={
             confirmState?.type === "delete"
               ? "Esta ação removerá a tarefa permanentemente. Deseja continuar?"
-              : confirmState?.type === "complete"
-              ? "Marcar a tarefa como realizada a deixará com status \"realizada\". Deseja continuar?"
-              : "As datas de início e prazo serão atualizadas. Deseja confirmar?"
+              : "Marcar a tarefa como realizada a deixará com status \"realizada\". Deseja continuar?"
           }
           onConfirm={handleConfirm}
         />
