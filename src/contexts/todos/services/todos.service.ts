@@ -23,6 +23,8 @@ export async function createTodo(input: {
   userId: string;
   title: string;
   status: ActiveTodoStatus;
+  startAt?: string | null;
+  dueAt?: string | null;
 }): Promise<Todo> {
   const { data, error } = await supabase
     .from("todos")
@@ -31,6 +33,8 @@ export async function createTodo(input: {
       user_id: input.userId,
       status: input.status,
       completed: false,
+      start_at: input.startAt,
+      due_at: input.dueAt,
     })
     .select()
     .single();
@@ -51,6 +55,30 @@ export async function updateTodoStatus(input: {
   const { data, error } = await supabase
     .from("todos")
     .update({ status: input.status, completed: false })
+    .eq("id", input.id)
+    .select()
+    .single();
+
+  if (error) throw new Error(error.message);
+  if (!data) throw new Error("Tarefa não encontrada.");
+
+  return data;
+}
+
+/**
+ * Atualiza as datas de uma tarefa.
+ */
+export async function updateTodoDates(input: {
+  id: string;
+  startAt?: string | null;
+  dueAt?: string | null;
+}): Promise<Todo> {
+  const { data, error } = await supabase
+    .from("todos")
+    .update({
+      start_at: input.startAt,
+      due_at: input.dueAt,
+    })
     .eq("id", input.id)
     .select()
     .single();

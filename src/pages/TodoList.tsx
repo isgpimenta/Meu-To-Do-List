@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/common/Header";
-import { CheckIcon, TrashIcon } from "lucide-react";
+import { CheckIcon, TrashIcon, CalendarIcon, ClockIcon } from "lucide-react";
 import {
   getStatusBadge,
   useTodoList,
   type ActiveTodoStatus,
+  formatDateTime,
+  toLocalDateTimeString,
 } from "@/contexts/todos/hooks/useTodoList";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
 import type { TodoStatus } from "@/contexts/todos/todos.types";
@@ -14,6 +16,7 @@ import type { TodoStatus } from "@/contexts/todos/todos.types";
  * Página principal da lista de tarefas do usuário autenticado.
  * Inclui confirmação antes de excluir ou marcar como realizada.
  * Permite filtrar tarefas por status.
+ * Permite definir data/hora de início e prazo final.
  */
 export const TodoList = () => {
   const {
@@ -25,12 +28,19 @@ export const TodoList = () => {
     setNewTitle,
     newStatus,
     setNewStatus,
+    newStartAt,
+    setNewStartAt,
+    newDueAt,
+    setNewDueAt,
     activeStatusOptions,
     insertTodo,
     toggleCompletion,
     completeTodo,
     updateStatus,
+    updateDates,
     deleteTodo,
+    formatDateTime: fmtDateTime,
+    toLocalDateTimeString,
   } = useTodoList();
 
   // Filter state
@@ -41,6 +51,11 @@ export const TodoList = () => {
     type: "delete" | "complete";
     todoId: string;
   } | null>(null);
+
+  // State for editing dates inline
+  const [editingDatesId, setEditingDatesId] = useState<string | null>(null);
+  const [editStartAt, setEditStartAt] = useState("");
+  const [editDueAt, setEditDueAt] = useState("");
 
   const openConfirm = (type: "delete" | "complete", todoId: string) => {
     setConfirmState({ type, todoId });
@@ -57,6 +72,27 @@ export const TodoList = () => {
       completeTodo.mutate(todoId);
     }
     closeConfirm();
+  };
+
+  const startEditDates = (todo: { id: string; start_at: string | null; due_at: string | null }) => {
+    setEditingDatesId(todo.id);
+    setEditStartAt(toLocalDateTimeString(todo.start_at));
+    setEditDueAt(toLocalDateTimeString(todo.due_at));
+  };
+
+  const cancelEditDates = () => {
+    setEditingDatesId(null);
+    setEditStartAt("");
+    setEditDueAt("");
+  };
+
+  const saveEditDates = (todoId: string) => {
+    updateDates.mutate({
+      id: todoId,
+      startAt: toISOString(editStartAt),
+      dueAt: toISOString(editDueAt),
+    });
+    cancelEditDates();
   };
 
   // Filter todos based on selected status
@@ -139,6 +175,34 @@ export const TodoList = () => {
               ))}
             </select>
           </div>
+
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1.5 text-sm text-muted-foreground whitespace-nowrap">
+              <CalendarIcon className="h-3.5 w-3.5" />
+              <span>Início</span>
+            </label>
+            <input
+              type="datetime-local"
+              className={cn(
+                "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+              )}
+              value={newStartAt}
+              onChange={(e) => setNewStartAt(e.target.value)}
+            />
+            <label className="flex items-center gap-1.5 text-sm text-muted-foreground whitespace-nowrap ml-4">
+              <ClockIcon className="h-3.5 w-3.5" />
+              <span>Prazo</span>
+            </label>
+            <input
+              type="datetime-local"
+              className={cn(
+                "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+              )}
+              value={newDueAt}
+              onChange={(e) => setNewDueAt(e.target.value)}
+            />
+          </div>
+
           <button
             type="submit"
             className={cn(
@@ -157,101 +221,171 @@ export const TodoList = () => {
               const isCompleted =
                 todo.completed || todo.status === "realizada";
               const displayStatus = isCompleted ? "realizada" : todo.status;
+              const isEditingDates = editingDatesId === todo.id;
 
               return (
                 <li
                   key={todo.id}
                   className={cn(
-                    "flex items-center justify-between rounded border border-input p-3",
+                    "rounded border border-input p-3",
                     isCompleted && "bg-muted",
                   )}
                 >
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <input
-                      type="checkbox"
-                      checked={isCompleted}
-                      onChange={() =>
-                        toggleCompletion.mutate({
-                          id: todo.id,
-                          completed: !isCompleted,
-                        })
-                      }
-                      className="flex-shrink-0 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                      aria-label="Marcar tarefa como realizada"
-                    />
-                    <div className="flex min-w-0 flex-1 flex-col items-start">
-                      <span
-                        className={cn(
-                          "w-full truncate text-sm",
-                          isCompleted && "line-through text-muted-foreground",
-                        )}
-                      >
-                        {todo.title}
-                      </span>
-
-                      {isCompleted ? (
-                        <span
-                          className={cn(
-                            "mt-1 inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
-                            getStatusBadge(displayStatus).classes,
-                          )}
-                        >
-                          Realizada
-                        </span>
-                      ) : (
-                        <select
-                          value={todo.status}
-                          onChange={(e) =>
-                            updateStatus.mutate({
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 flex-1 flex-col gap-2">
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={isCompleted}
+                          onChange={() =>
+                            toggleCompletion.mutate({
                               id: todo.id,
-                              status: e.target.value as ActiveTodoStatus,
+                              completed: !isCompleted,
                             })
                           }
-                          disabled={updateStatus.isPending}
+                          className="flex-shrink-0 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                          aria-label="Marcar tarefa como realizada"
+                        />
+                        <span
                           className={cn(
-                            "mt-1 rounded border border-input bg-background px-2 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary",
-                            getStatusBadge(displayStatus).classes,
+                            "flex-1 truncate text-sm",
+                            isCompleted && "line-through text-muted-foreground",
                           )}
                         >
-                          {activeStatusOptions.map((option) => (
-                            <option key={option.value} value={option.value}>
-                              {option.label}
-                            </option>
-                          ))}
-                        </select>
-                      )}
+                          {todo.title}
+                        </span>
+                      </div>
+
+                      {/* Status e datas */}
+                      <div className="flex flex-wrap items-center gap-2 ml-7">
+                        {isCompleted ? (
+                          <span
+                            className={cn(
+                              "inline-flex rounded-full px-2 py-0.5 text-xs font-medium",
+                              getStatusBadge(displayStatus).classes,
+                            )}
+                          >
+                            Realizada
+                          </span>
+                        ) : (
+                          <select
+                            value={todo.status}
+                            onChange={(e) =>
+                              updateStatus.mutate({
+                                id: todo.id,
+                                status: e.target.value as ActiveTodoStatus,
+                              })
+                            }
+                            disabled={updateStatus.isPending}
+                            className={cn(
+                              "rounded border border-input bg-background px-2 py-0.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary",
+                              getStatusBadge(displayStatus).classes,
+                            )}
+                          >
+                            {activeStatusOptions.map((option) => (
+                              <option key={option.value} value={option.value}>
+                                {option.label}
+                              </option>
+                            ))}
+                          </select>
+                        )}
+
+                        {/* Datas de início e prazo */}
+                        {!isEditingDates ? (
+                          <>
+                            {todo.start_at && (
+                              <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <CalendarIcon className="h-3 w-3" />
+                                Início: {fmtDateTime(todo.start_at)}
+                              </span>
+                            )}
+                            {todo.due_at && (
+                              <span
+                                className={cn(
+                                  "flex items-center gap-1 text-xs",
+                                  new Date(todo.due_at) < new Date() &&
+                                    !isCompleted &&
+                                    "text-destructive",
+                                )}
+                              >
+                                <ClockIcon className="h-3 w-3" />
+                                Prazo: {fmtDateTime(todo.due_at)}
+                              </span>
+                            )}
+                            {(!todo.start_at && !todo.due_at) || isCompleted ? null : (
+                              <button
+                                onClick={() => startEditDates(todo)}
+                                className="text-xs text-primary hover:underline"
+                              >
+                                Editar datas
+                              </button>
+                            )}
+                          </>
+                        ) : (
+                          <div className="flex flex-wrap items-center gap-2">
+                            <input
+                              type="datetime-local"
+                              value={editStartAt}
+                              onChange={(e) => setEditStartAt(e.target.value)}
+                              className="rounded border border-input px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                            <input
+                              type="datetime-local"
+                              value={editDueAt}
+                              onChange={(e) => setEditDueAt(e.target.value)}
+                              className="rounded border border-input px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                            />
+                            <button
+                              onClick={() => saveEditDates(todo.id)}
+                              className="text-xs text-green-700 hover:underline"
+                              disabled={updateDates.isPending}
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              onClick={cancelEditDates}
+                              className="text-xs text-muted-foreground hover:underline"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Botões de ação com confirmação */}
-                  <div className="ml-2 flex items-center gap-2">
-                    <button
-                      onClick={() => openConfirm("delete", todo.id)}
-                      className="flex flex-col items-center text-sm text-destructive hover:underline"
-                      disabled={deleteTodo.isPending}
-                    >
-                      <TrashIcon className="h-4 w-4" aria-label="Excluir" />
-                      <span className="mt-1">Excluir</span>
-                    </button>
+                    {/* Botões de ação com confirmação */}
+                    <div className="ml-2 flex flex-col items-center gap-2">
+                      <button
+                        onClick={() => openConfirm("delete", todo.id)}
+                        className="flex flex-col items-center text-sm text-destructive hover:underline"
+                        disabled={deleteTodo.isPending}
+                      >
+                        <TrashIcon className="h-4 w-4" aria-label="Excluir" />
+                        <span className="mt-1">Excluir</span>
+                      </button>
 
-                    <button
-                      onClick={() => openConfirm("complete", todo.id)}
-                      className={cn(
-                        "flex flex-col items-center text-sm hover:underline",
-                        isCompleted
-                          ? "cursor-not-allowed text-muted-foreground"
-                          : "text-green-700",
-                      )}
-                      disabled={completeTodo.isPending || isCompleted}
-                      title={
-                        isCompleted
-                          ? "Tarefa já realizada"
-                          : "Marcar como realizada"
-                      }
-                    >
-                      <CheckIcon className="h-4 w-4" aria-label="Realizada" />
-                      <span className="mt-1">Realizada</span>
-                    </button>
+                      <button
+                        onClick={() => openConfirm("complete", todo.id)}
+                        className={cn(
+                          "flex flex-col items-center text-sm hover:underline",
+                          isCompleted
+                            ? "cursor-not-allowed text-muted-foreground"
+                            : "text-green-700",
+                        )}
+                        disabled={completeTodo.isPending || isCompleted}
+                        title={
+                          isCompleted
+                            ? "Tarefa já realizada"
+                            : "Marcar como realizada"
+                        }
+                      >
+                        <CheckIcon
+                          className="h-4 w-4"
+                          aria-label="Marcar como realizada"
+                        />
+                        <span className="mt-1">Realizada</span>
+                      </button>
+                    </div>
                   </div>
                 </li>
               );

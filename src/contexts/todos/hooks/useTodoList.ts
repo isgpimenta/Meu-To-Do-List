@@ -13,6 +13,7 @@ import {
   fetchTodos,
   removeTodo,
   toggleTodoCompletion as toggleTodoCompletionInDb,
+  updateTodoDates as updateTodoDatesInDb,
   updateTodoStatus as updateTodoStatusInDb,
 } from "@/contexts/todos/services/todos.service";
 import type {
@@ -38,6 +39,12 @@ type UpdateStatusMutation = UseMutateResult<
   Todo,
   Error,
   { id: string; status: ActiveTodoStatus },
+  unknown
+>;
+type UpdateDatesMutation = UseMutateResult<
+  Todo,
+  Error,
+  { id: string; startAt?: string | null; dueAt?: string | null },
   unknown
 >;
 type DeleteTodoMutation = UseMutateResult<void, Error, string, unknown>;
@@ -75,6 +82,46 @@ export function getStatusBadge(status: TodoStatus): {
 }
 
 /**
+ * Formata data/hora para exibição (ex: "15/01/2024 14:30").
+ */
+export function formatDateTime(isoString: string | null | undefined): string {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  return date.toLocaleString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+/**
+ * Converte data/hora local para ISO string (para salvar no banco).
+ */
+export function toISOString(localDateTime: string): string | null {
+  if (!localDateTime) return null;
+  // O input datetime-local retorna "YYYY-MM-DDTHH:MM"
+  // Adicionamos segundos e assumimos timezone local
+  return new Date(localDateTime).toISOString();
+}
+
+/**
+ * Converte ISO string para formato do input datetime-local.
+ */
+export function toLocalDateTimeString(isoString: string | null): string {
+  if (!isoString) return "";
+  const date = new Date(isoString);
+  // Formato: YYYY-MM-DDTHH:MM
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+  return `${year}-${month}-${day}T${hours}:${minutes}`;
+}
+
+/**
  * Gerencia busca, criação, conclusão, atualização e exclusão de tarefas.
  */
 export function useTodoList() {
@@ -82,6 +129,8 @@ export function useTodoList() {
   const { user } = useAuth();
   const [newTitle, setNewTitle] = useState("");
   const [newStatus, setNewStatus] = useState<ActiveTodoStatus>("pendente");
+  const [newStartAt, setNewStartAt] = useState("");
+  const [newDueAt, setNewDueAt] = useState("");
 
   /**
    * Atualiza a query atual após mutações para manter a lista sincronizada.
@@ -109,13 +158,21 @@ export function useTodoList() {
   const insertTodo: InsertTodoMutation = useMutation({
     mutationFn: async (title: string) => {
       if (!user) throw new Error("Usuário não autenticado");
-      return createTodo({ userId: user.id, title, status: newStatus });
+      return createTodo({
+        userId: user.id,
+        title,
+        status: newStatus,
+        startAt: toISOString(newStartAt),
+        dueAt: toISOString(newDueAt),
+      });
     },
     onSuccess: () => {
       invalidateTodos();
       toast.success("Tarefa adicionada!");
       setNewTitle("");
       setNewStatus("pendente");
+      setNewStartAt("");
+      setNewDueAt("");
     },
     onError: (mutationError) => {
       toast.error(`Erro ao adicionar: ${getErrorMessage(mutationError)}`);
@@ -159,6 +216,17 @@ export function useTodoList() {
     },
   });
 
+  const updateDates: UpdateDatesMutation = useMutation({
+    mutationFn: updateTodoDatesInDb,
+    onSuccess: () => {
+      invalidateTodos();
+      toast.success("Datas atualizadas.");
+    },
+    onError: (mutationError) => {
+      toast.error(`Erro ao atualizar datas: ${getErrorMessage(mutationError)}`);
+    },
+  });
+
   const deleteTodo: DeleteTodoMutation = useMutation({
     mutationFn: removeTodo,
     onSuccess: () => {
@@ -179,12 +247,19 @@ export function useTodoList() {
     setNewTitle,
     newStatus,
     setNewStatus,
+    newStartAt,
+    setNewStartAt,
+    newDueAt,
+    setNewDueAt,
     activeStatusOptions,
     insertTodo,
     toggleCompletion,
     completeTodo,
     updateStatus,
+    updateDates,
     deleteTodo,
+    formatDateTime,
+    toLocalDateTimeString,
   };
 }
 
