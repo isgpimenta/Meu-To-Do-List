@@ -5,26 +5,28 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/common/Header";
 import { useAuth } from "@/hooks/useAuth";
-import { TrashIcon } from "lucide-react";
+import { TrashIcon, CheckIcon } from "lucide-react";
+
+type TodoStatus = "pendente" | "em andamento";
 
 interface Todo {
   id: string;
   user_id: string;
   title: string;
   completed: boolean;
-  status: "realizada" | "pendente" | "em andamento";
+  status: TodoStatus;
   created_at: string;
 }
 
 /**
  * Displays the authenticated user's to‑do items and allows CRUD operations.
- * Each task has a status: realizada, pendente or em andamento.
+ * Each task now has only two statuses: pendente and em andamento.
  */
 export const TodoList = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [newTitle, setNewTitle] = useState("");
-  const [newStatus, setNewStatus] = useState<"realizada" | "pendente" | "em andamento">("pendente");
+  const [newStatus, setNewStatus] = useState<TodoStatus>("pendente");
 
   // Fetch todos only for the logged‑in user
   const {
@@ -88,9 +90,9 @@ export const TodoList = () => {
     onError: (err: any) => toast.error(`Erro ao atualizar: ${err.message}`),
   });
 
-  // Update task status
+  // Update task status (now only pendente / em andamento)
   const updateStatus = useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: "realizada" | "pendente" | "em andamento" }) => {
+    mutationFn: async ({ id, status }: { id: string; status: TodoStatus }) => {
       const { data, error } = await supabase
         .from("todos")
         .update({ status })
@@ -117,17 +119,15 @@ export const TodoList = () => {
     },
   });
 
-  const statusOptions: { value: "realizada" | "pendente" | "em andamento"; label: string }[] = [
+  const statusOptions: { value: TodoStatus; label: string }[] = [
     { value: "pendente", label: "Pendente" },
     { value: "em andamento", label: "Em andamento" },
-    { value: "realizada", label: "Realizada" },
   ];
 
-  const getStatusBadge = (status: "realizada" | "pendente" | "em andamento") => {
+  const getStatusBadge = (status: TodoStatus) => {
     const config = {
       pendente: { label: "Pendente", classes: "bg-yellow-100 text-yellow-800" },
       "em andamento": { label: "Em andamento", classes: "bg-blue-100 text-blue-800" },
-      realizada: { label: "Realizada", classes: "bg-green-100 text-green-800" },
     };
     return config[status];
   };
@@ -174,7 +174,7 @@ export const TodoList = () => {
             />
             <select
               value={newStatus}
-              onChange={(e) => setNewStatus(e.target.value as any)}
+              onChange={(e) => setNewStatus(e.target.value as TodoStatus)}
               className={cn(
                 "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
               )}
@@ -216,7 +216,8 @@ export const TodoList = () => {
                     className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary flex-shrink-0"
                   />
                   <div className="flex flex-col items-start min-w-0 flex-1">
-                    <span                      className={cn(
+                    <span
+                      className={cn(
                         "text-sm truncate w-full",
                         todo.completed && "line-through text-muted-foreground",
                       )}
@@ -225,7 +226,7 @@ export const TodoList = () => {
                     </span>
                     <select
                       value={todo.status}
-                      onChange={(e) => updateStatus.mutate({ id: todo.id, status: e.target.value as any })}
+                      onChange={(e) => updateStatus.mutate({ id: todo.id, status: e.target.value as TodoStatus })}
                       disabled={updateStatus.isPending}
                       className={cn(
                         "mt-1 px-2 py-0.5 text-xs rounded border border-input bg-background",
@@ -241,14 +242,29 @@ export const TodoList = () => {
                     </select>
                   </div>
                 </div>
-                {/* Trash icon with label below */}
-                <button                  onClick={() => deleteTodo.mutate(todo.id)}
-                  className="flex flex-col items-center text-sm text-destructive hover:underline flex-shrink-0 ml-2"
-                  disabled={deleteTodo.isPending}
-                >
-                  <TrashIcon className="w-4 h-4" aria-label="Excluir" />
-                  <span className="mt-1">Excluir</span>
-                </button>
+
+                {/* Action icons: trash, check (realizada) */}
+                <div className="flex items-center gap-2 ml-2">
+                  {/* Trash button with label */}
+                  <button
+                    onClick={() => deleteTodo.mutate(todo.id)}
+                    className="flex flex-col items-center text-sm text-destructive hover:underline"
+                    disabled={deleteTodo.isPending}
+                  >
+                    <TrashIcon className="w-4 h-4" aria-label="Excluir" />
+                    <span className="mt-1">Excluir</span>
+                  </button>
+
+                  {/* Check icon representing "realizada" */}
+                  <button
+                    onClick={() => toggleTodo.mutate({ ...todo, completed: true })}
+                    className="flex flex-col items-center text-sm text-success hover:underline"
+                    title="Marcar como realizada"
+                  >
+                    <CheckIcon className="w-4 h-4" aria-label="Realizada" />
+                    <span className="mt-1">Realizada</span>
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
