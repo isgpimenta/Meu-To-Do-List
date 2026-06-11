@@ -13,9 +13,9 @@ import {
   fetchTodos,
   removeTodo,
   toggleTodoCompletion as toggleTodoCompletionInDb,
-  updateTodo as updateTodoInDb,
   updateTodoDates as updateTodoDatesInDb,
   updateTodoStatus as updateTodoStatusInDb,
+  updateTodoTitle as updateTodoTitleInDb,
 } from "@/contexts/todos/services/todos.service";
 import type {
   ActiveTodoStatus,
@@ -48,16 +48,10 @@ type UpdateDatesMutation = UseMutateResult<
   { id: string; startAt?: string | null; dueAt?: string | null },
   unknown
 >;
-type UpdateTodoMutation = UseMutateResult<
+type UpdateTitleMutation = UseMutateResult<
   Todo,
   Error,
-  {
-    id: string;
-    title: string;
-    status: TodoStatus;
-    startAt?: string | null;
-    dueAt?: string | null;
-  },
+  { id: string; title: string },
   unknown
 >;
 type DeleteTodoMutation = UseMutateResult<void, Error, string, unknown>;
@@ -240,14 +234,14 @@ export function useTodoList() {
     },
   });
 
-  const updateTodo: UpdateTodoMutation = useMutation({
-    mutationFn: updateTodoInDb,
+  const updateTodoTitle: UpdateTitleMutation = useMutation({
+    mutationFn: updateTodoTitleInDb,
     onSuccess: () => {
       invalidateTodos();
-      toast.success("Tarefa atualizada.");
+      toast.success("Título atualizado.");
     },
     onError: (mutationError) => {
-      toast.error(`Erro ao atualizar tarefa: ${getErrorMessage(mutationError)}`);
+      toast.error(`Erro ao atualizar título: ${getErrorMessage(mutationError)}`);
     },
   });
 
@@ -281,10 +275,9 @@ export function useTodoList() {
     completeTodo,
     updateStatus,
     updateDates,
-    updateTodo,
+    updateTodoTitle,
     deleteTodo,
     formatDateTime,
-    toISOString,
     toLocalDateTimeString,
   };
 }
