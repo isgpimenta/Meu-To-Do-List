@@ -16,7 +16,7 @@ import type { TodoStatus } from "@/contexts/todos/todos.types";
  * Página principal da lista de tarefas do usuário autenticado.
  * Inclui confirmação antes de excluir ou marcar como realizada.
  * Permite filtrar tarefas por status.
- * Permite definir data/hora de início e prazo final.
+ * Permite definir data/hora de início e prazo final com confirmação explícita.
  */
 export const TodoList = () => {
   const {
@@ -56,6 +56,10 @@ export const TodoList = () => {
   const [editingDatesId, setEditingDatesId] = useState<string | null>(null);
   const [editStartAt, setEditStartAt] = useState("");
   const [editDueAt, setEditDueAt] = useState("");
+
+  // Tentative state for date confirmation in new task form
+  const [tentativeStartAt, setTentativeStartAt] = useState("");
+  const [tentativeDueAt, setTentativeDueAt] = useState("");
 
   const openConfirm = (type: "delete" | "complete", todoId: string) => {
     setConfirmState({ type, todoId });
@@ -181,26 +185,91 @@ export const TodoList = () => {
               <CalendarIcon className="h-3.5 w-3.5" />
               <span>Início</span>
             </label>
-            <input
-              type="datetime-local"
-              className={cn(
-                "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+            <div className="relative">
+              <input
+                type="datetime-local"
+                value={tentativeStartAt}
+                onChange={(e) => setTentativeStartAt(e.target.value)}
+                className={cn(
+                  "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+                )}
+              />
+              {tentativeStartAt ? (
+                <button
+                  onClick={() => {
+                    setNewStartAt(tentativeStartAt);
+                    setTentativeStartAt("");
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary hover:underline"
+                >
+                  Confirmar
+                </button>
+              ) : (
+                <button
+                  onClick={() => setTentativeStartAt(newStartAt)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:underline"
+                >
+                  {newStartAt ? "Alterar" : "Selecionar"}
+                </button>
               )}
-              value={newStartAt}
-              onChange={(e) => setNewStartAt(e.target.value)}
-            />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
             <label className="flex items-center gap-1.5 text-sm text-muted-foreground whitespace-nowrap ml-4">
               <ClockIcon className="h-3.5 w-3.5" />
               <span>Prazo</span>
             </label>
-            <input
-              type="datetime-local"
-              className={cn(
-                "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+            <div className="relative">
+              <input
+                type="datetime-local"
+                value={tentativeDueAt}
+                onChange={(e) => setTentativeDueAt(e.target.value)}
+                className={cn(
+                  "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
+                )}
+              />
+              {tentativeDueAt ? (
+                <button
+                  onClick={() => {
+                    setNewDueAt(tentativeDueAt);
+                    setTentativeDueAt("");
+                  }}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary hover:underline"
+                >
+                  Confirmar
+                </button>
+              ) : (
+                <button
+                  onClick={() => setTentativeDueAt(newDueAt)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:underline"
+                >
+                  {newDueAt ? "Alterar" : "Selecionar"}
+                </button>
               )}
-              value={newDueAt}
-              onChange={(e) => setNewDueAt(e.target.value)}
-            />
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            {newStartAt && (
+              <span className="text-xs text-muted-foreground">
+                Início: {fmtDateTime(newStartAt)}
+              </span>
+            )}
+            {newDueAt && (
+              <span className={cn(
+                "ml-2 text-xs",
+                new Date(newDueAt) < new Date() &&
+                  !(
+                    newStartAt === "" &&
+                    newStatus === "pendente" &&
+                    !newTitle.trim()
+                  ) &&
+                  "text-destructive"
+              )}
+                Prazo: {fmtDateTime(newDueAt)}
+              </span>
+            )}
           </div>
 
           <button
@@ -323,18 +392,56 @@ export const TodoList = () => {
                           </>
                         ) : (
                           <div className="flex flex-wrap items-center gap-2">
-                            <input
-                              type="datetime-local"
-                              value={editStartAt}
-                              onChange={(e) => setEditStartAt(e.target.value)}
-                              className="rounded border border-input px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                            />
-                            <input
-                              type="datetime-local"
-                              value={editDueAt}
-                              onChange={(e) => setEditDueAt(e.target.value)}
-                              className="rounded border border-input px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                            />
+                            <div className="relative">
+                              <input
+                                type="datetime-local"
+                                value={editStartAt}
+                                onChange={(e) => setEditStartAt(e.target.value)}
+                                className="rounded border border-input px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                              {editStartAt ? (
+                                <button
+                                  onClick={() => {
+                                    setEditStartAt(editStartAt); // No-op, just to trigger blur if needed
+                                  }}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary hover:underline"
+                                >
+                                  Confirmar
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setEditStartAt(toLocalDateTimeString(todo.start_at))}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:underline"
+                                >
+                                  Selecionar
+                                </button>
+                              )}
+                            </div>
+                            <div className="relative ml-2">
+                              <input
+                                type="datetime-local"
+                                value={editDueAt}
+                                onChange={(e) => setEditDueAt(e.target.value)}
+                                className="rounded border border-input px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                              {editDueAt ? (
+                                <button
+                                  onClick={() => {
+                                    setEditDueAt(editDueAt); // No-op
+                                  }}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-primary hover:underline"
+                                >
+                                  Confirmar
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => setEditDueAt(toLocalDateTimeString(todo.due_at))}
+                                  className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground hover:underline"
+                                >
+                                  Selecionar
+                                </button>
+                              )}
+                            </div>
                             <button
                               onClick={() => saveEditDates(todo.id)}
                               className="text-xs text-green-700 hover:underline"
