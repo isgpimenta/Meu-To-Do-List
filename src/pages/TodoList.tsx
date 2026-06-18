@@ -33,8 +33,6 @@ export const TodoList = () => {
     setNewStartAt,
     newDueAt,
     setNewDueAt,
-    showDeleted, // Adicionar estado de filtro
-    setShowDeleted, // Adicionar setter
     activeStatusOptions,
     insertTodo,
     toggleCompletion,
@@ -43,8 +41,7 @@ export const TodoList = () => {
     updateDates,
     updateTodoTitle,
     deleteTodo,
-    restoreTodo, // Adicionar restore
-    formatDateTime,
+    formatDateTime: fmtDateTime,
     toLocalDateTimeString,
   } = useTodoList();
 
@@ -146,7 +143,7 @@ export const TodoList = () => {
     cancelEditTodo();
   };
 
-  // Filter todos based on selected status and showDeleted
+  // Filter todos based on selected status
   const filteredTodos = todos.filter((todo) => {
     if (filterStatus === "all") return true;
     const isCompleted = todo.completed || todo.status === "realizada";
@@ -176,7 +173,7 @@ export const TodoList = () => {
         <Header />
         <h2 className="mb-4 text-xl font-semibold">Minha Lista de Tarefas</h2>
 
-        {/* Filter dropdown and trash can toggle */}
+        {/* Filter dropdown */}
         <div className="mb-4 flex items-center gap-2">
           <label htmlFor="status-filter" className="text-sm font-medium">
             Filtrar por status:
@@ -192,12 +189,6 @@ export const TodoList = () => {
             <option value="em andamento">Em andamento</option>
             <option value="realizada">Realizada</option>
           </select>
-          <button
-            onClick={() => setShowDeleted(!showDeleted)} // Toggle trash can
-            className="rounded bg-accent px-3 py-1 text-accent-foreground hover:bg-accent/90"
-          >
-            {showDeleted ? "Mostrar lixeira" : "Mostrar tarefas ativas"}
-          </button>
         </div>
 
         {/* New task form */}
@@ -449,7 +440,7 @@ export const TodoList = () => {
                           {todo.start_at && (
                             <span className="flex items-center gap-1 text-xs text-muted-foreground">
                               <CalendarIcon className="h-3 w-3" />
-                              Início: {formatDateTime(todo.start_at)}
+                              Início: {fmtDateTime(todo.start_at)}
                             </span>
                           )}
                           {todo.due_at && (
@@ -462,7 +453,7 @@ export const TodoList = () => {
                               )}
                             >
                               <ClockIcon className="h-3 w-3" />
-                              Prazo: {formatDateTime(todo.due_at)}
+                              Prazo: {fmtDateTime(todo.due_at)}
                             </span>
                           )}
                         </div>
@@ -515,39 +506,6 @@ export const TodoList = () => {
         ) : (
           <p className="text-center text-muted-foreground">
             Nenhuma tarefa encontrada para este status.
-          </p>
-        )}
-
-        {/* Trash can section */}
-        {showDeleted && filteredTodos.length > 0 ? (
-          <div className="mt-8 p-4 border-t border-border">
-            <h3 className="text-xl font-semibold mb-4">Lixeira</h3>
-            <ul className="space-y-2">
-              {filteredTodos.map((todo) => {
-                return (
-                  <li key={todo.id} className="p-3 rounded border border-input">
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="checkbox"
-                        checked={todo.deleted_at !== null} // Mostrar como concluída
-                        onChange={() =>
-                          restoreTodo.mutate({ id: todo.id }) // Restaurar tarefa
-                        }
-                        className="flex-shrink-0 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                        aria-label="Restaurar tarefa"
-                      />
-                      <span className="flex-1 truncate text-sm">
-                        {todo.title}
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        ) : (
-          <p className="text-center text-muted-foreground">
-            A lixeira está vazia.
           </p>
         )}
 

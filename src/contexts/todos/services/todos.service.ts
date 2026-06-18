@@ -5,18 +5,16 @@ import type { ActiveTodoStatus, Todo } from "@/contexts/todos/todos.types";
  * Busca as tarefas de um usuário que ainda não foram marcadas como excluídas.
  * A coluna `deleted_at` deve ser NULL para que a tarefa apareça na lista.
  */
-export async function fetchTodos(userId: string, showDeleted = false): Promise<Todo[]> {
-  const query = supabase.from("todos").select("*").eq("user_id", userId);
-  
-  if (showDeleted) {
-    query.is("deleted_at", null); // Mostra tarefas ativas (não deletadas)
-  } else {
-    query.isNot("deleted_at", null); // Mostra tarefas deletadas (soft delete)
-  }
+export async function fetchTodos(userId: string): Promise<Todo[]> {
+  const { data, error } = await supabase
+    .from("todos")
+    .select("*")
+    .eq("user_id", userId)
+    .is("deleted_at", null) // filtra apenas tarefas não excluídas
+    .order("created_at", { ascending: false });
 
-  const { data, error } = await query.order("created_at", { ascending: false });
-  
   if (error) throw new Error(error.message);
+
   return data ?? [];
 }
 
@@ -45,6 +43,7 @@ export async function createTodo(input: {
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Tarefa não criada.");
+
   return data;
 }
 
@@ -64,6 +63,7 @@ export async function updateTodoStatus(input: {
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Tarefa não encontrada.");
+
   return data;
 }
 
@@ -87,6 +87,7 @@ export async function updateTodoDates(input: {
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Tarefa não encontrada.");
+
   return data;
 }
 
@@ -106,11 +107,12 @@ export async function updateTodoTitle(input: {
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Tarefa não encontrada.");
+
   return data;
 }
 
 /**
- * Marca uma tarefa como realizada sem removê-la do banco.
+ * Marca uma tarefa como realizada sem removê‑la do banco.
  */
 export async function completeTodo(id: string): Promise<Todo> {
   const { data, error } = await supabase
@@ -122,6 +124,7 @@ export async function completeTodo(id: string): Promise<Todo> {
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Tarefa não encontrada.");
+
   return data;
 }
 
@@ -144,11 +147,13 @@ export async function toggleTodoCompletion(input: {
 
   if (error) throw new Error(error.message);
   if (!data) throw new Error("Tarefa não encontrada.");
+
   return data;
 }
 
 /**
- * Soft delete: define a data/hora de exclusão em `deleted_at`.
+ * Soft‑delete: define a data/hora de exclusão em `deleted_at`.
+ * A tarefa permanece no banco para possível restauração.
  */
 export async function softDeleteTodo(id: string): Promise<void> {
   const { error } = await supabase
@@ -160,21 +165,10 @@ export async function softDeleteTodo(id: string): Promise<void> {
 }
 
 /**
- * Restaura uma tarefa deletada (remove o deleted_at).
- */
-export async function restoreTodo(id: string): Promise<void> {
-  const { error } = await supabase
-    .from("todos")
-    .update({ deleted_at: null })
-    .eq("id", id);
-
-  if (error) throw new Error(error.message);
-}
-
-/**
- * Exclusão permanente (hard delete).
+ * Hard delete (mantido apenas para casos extremos).
  */
 export async function removeTodo(id: string): Promise<void> {
   const { error } = await supabase.from("todos").delete().eq("id", id);
+
   if (error) throw new Error(error.message);
 }
