@@ -16,7 +16,7 @@ import type { TodoStatus } from "@/contexts/todos/todos.types";
 
 /**
  * Página principal da lista de tarefas do usuário autenticado.
- * Inclui confirmação antes de excluir, marcar como realizada ou salvar alterações.
+ * Inclui confirmação antes de excluir, marcar como realizada, salvar alterações ou criar nova tarefa.
  * Permite filtrar tarefas por status, definir datas e editar todos os campos da tarefa.
  */
 export const TodoList = () => {
@@ -64,6 +64,14 @@ export const TodoList = () => {
   // Confirmation before persisting edits
   const [confirmEdit, setConfirmEdit] = useState<{
     todoId: string;
+    title: string;
+    status: ActiveTodoStatus;
+    startAt: string | null;
+    dueAt: string | null;
+  } | null>(null);
+
+  // Confirmation before creating new task
+  const [confirmAdd, setConfirmAdd] = useState<{
     title: string;
     status: ActiveTodoStatus;
     startAt: string | null;
@@ -141,6 +149,24 @@ export const TodoList = () => {
     cancelEditTodo();
   };
 
+  const requestAddTodo = () => {
+    if (!newTitle.trim()) return;
+    setConfirmAdd({
+      title: newTitle.trim(),
+      status: newStatus,
+      startAt: newStartAt ? toISOString(newStartAt) : null,
+      dueAt: newDueAt ? toISOString(newDueAt) : null,
+    });
+  };
+
+  const confirmAddTodo = () => {
+    if (!confirmAdd) return;
+    const { title, status, startAt, dueAt } = confirmAdd;
+    insertTodo.mutate(title);
+    // The insertTodo mutation already handles clearing the form on success
+    setConfirmAdd(null);
+  };
+
   // Filter todos based on selected status
   const filteredTodos = todos.filter((todo) => {
     if (filterStatus === "all") return true;
@@ -194,7 +220,7 @@ export const TodoList = () => {
           className="mb-6 flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            if (newTitle.trim()) insertTodo.mutate(newTitle.trim());
+            requestAddTodo();
           }}
         >
           <div className="flex items-center gap-2">
@@ -474,7 +500,7 @@ export const TodoList = () => {
                           className="flex flex-col items-center text-sm text-destructive hover:underline"
                           disabled={deleteTodo.isPending}
                         >
-                          <TrashIcon className="h-4 w-4" aria-label="Excluir" />
+                          <TrashIcon className="h-4 w-4" aria-label=" aria-label="Excluir" />
                           <span className="mt-1">Excluir</span>
                         </button>
 
@@ -525,6 +551,15 @@ export const TodoList = () => {
           title="Confirmar alterações"
           description="Deseja salvar as alterações feitas nesta tarefa?"
           onConfirm={confirmSaveEdit}
+        />
+
+        {/* Add task confirmation */}
+        <ConfirmEditDialog
+          open={!!confirmAdd}
+          onOpenChange={() => setConfirmAdd(null)}
+          title="Confirmar nova tarefa"
+          description="Deseja criar esta nova tarefa?"
+          onConfirm={confirmAddTodo}
         />
       </div>
     </div>
