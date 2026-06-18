@@ -16,6 +16,7 @@ import {
   updateTodoDates as updateTodoDatesInDb,
   updateTodoStatus as updateTodoStatusInDb,
   updateTodoTitle as updateTodoTitleInDb,
+  restoreTodo,
 } from "@/contexts/todos/services/todos.service";
 import type {
   ActiveTodoStatus,
@@ -55,6 +56,7 @@ type UpdateTitleMutation = UseMutationResult<
   unknown
 >;
 type DeleteTodoMutation = UseMutationResult<void, Error, string, unknown>;
+type RestoreTodoMutation = UseMutationResult<void, Error, string, unknown>;
 
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Erro desconhecido";
@@ -123,7 +125,7 @@ export function toLocalDateTimeString(isoString: string | null): string {
 }
 
 /**
- * Gerencia busca, criação, conclusão, atualização e exclusão (soft) de tarefas.
+ * Gerencia busca, criação, conclusão, atualização e exclusão de tarefas.
  */
 export function useTodoList() {
   const queryClient = useQueryClient();
@@ -132,6 +134,7 @@ export function useTodoList() {
   const [newStatus, setNewStatus] = useState<ActiveTodoStatus>("pendente");
   const [newStartAt, setNewStartAt] = useState("");
   const [newDueAt, setNewDueAt] = useState("");
+  const [showDeleted, setShowDeleted] = useState(false); // Novo estado para filtrar tarefas deletadas
 
   const invalidateTodos = () => {
     queryClient.invalidateQueries({
@@ -148,7 +151,7 @@ export function useTodoList() {
     queryKey: ["todos", user?.id ?? "anonymous"],
     queryFn: () => {
       if (!user) return Promise.resolve([]);
-      return fetchTodos(user.id);
+      return fetchTodos(user.id, showDeleted); // Passar showDeleted para o service
     },
     enabled: !!user,
   });
@@ -182,7 +185,9 @@ export function useTodoList() {
     onSuccess: (_data, variables) => {
       invalidateTodos();
       toast.success(
-        variables.completed ? "Tarefa marcada como realizada." : "Tarefa desmarcada."
+        variables.completed
+          ? "Tarefa marcada como realizada."
+          : "Tarefa desmarcada.",
       );
     },
     onError: (mutationError) => {
@@ -235,13 +240,24 @@ export function useTodoList() {
   });
 
   const deleteTodo: DeleteTodoMutation = useMutation({
-    mutationFn: softDeleteTodo, // soft delete now
+    mutationFn: softDeleteTodo, // Usar soft delete
     onSuccess: () => {
       invalidateTodos();
       toast.success("Tarefa excluída (soft delete).");
     },
     onError: (mutationError) => {
       toast.error(`Erro ao excluir: ${getErrorMessage(mutationError)}`);
+    },
+  });
+
+  const restoreTodo: RestoreTodoMutation = useMutation({
+    mutationFn: restoreTodo,
+    onSuccess: () => {
+      invalidateTodos();
+      toast.success("Tarefa restaurada.");
+    },
+    onError: (mutationError) => {
+      toast.error(`Erro ao restaurar: ${getErrorMessage(mutationError)}`);
     },
   });
 
@@ -258,6 +274,8 @@ export function useTodoList() {
     setNewStartAt,
     newDueAt,
     setNewDueAt,
+    showDeleted, // Adicionar ao retorno
+    setShowDeleted: (value) => setShowDeleted(value), // Adicionar setter
     activeStatusOptions,
     insertTodo,
     toggleCompletion,
@@ -266,6 +284,7 @@ export function useTodoList() {
     updateDates,
     updateTodoTitle,
     deleteTodo,
+    restoreTodo, // Adicionar restore
     formatDateTime,
     toLocalDateTimeString,
   };
