@@ -19,22 +19,6 @@ export async function fetchTodos(userId: string): Promise<Todo[]> {
 }
 
 /**
- * Busca as tarefas de um usuário que foram soft‑deleted (deleted_at preenchido).
- */
-export async function fetchDeletedTodos(userId: string): Promise<Todo[]> {
-  const { data, error } = await supabase
-    .from("todos")
-    .select("*")
-    .eq("user_id", userId)
-    .not("deleted_at", "is", null) // apenas excluídas
-    .order("deleted_at", { ascending: false });
-
-  if (error) throw new Error(error.message);
-
-  return data ?? [];
-}
-
-/**
  * Cria uma nova tarefa para o usuário autenticado.
  */
 export async function createTodo(input: {
@@ -181,26 +165,9 @@ export async function softDeleteTodo(id: string): Promise<void> {
 }
 
 /**
- * Restaura uma tarefa soft‑deleted, removendo a marca de exclusão.
+ * Hard delete (mantido apenas para casos extremos).
  */
-export async function restoreTodo(id: string): Promise<Todo> {
-  const { data, error } = await supabase
-    .from("todos")
-    .update({ deleted_at: null })
-    .eq("id", id)
-    .select()
-    .single();
-
-  if (error) throw new Error(error.message);
-  if (!data) throw new Error("Tarefa não encontrada.");
-
-  return data;
-}
-
-/**
- * Hard delete: remove permanentemente a tarefa do banco.
- */
-export async function hardDeleteTodo(id: string): Promise<void> {
+export async function removeTodo(id: string): Promise<void> {
   const { error } = await supabase.from("todos").delete().eq("id", id);
 
   if (error) throw new Error(error.message);

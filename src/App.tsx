@@ -8,7 +8,6 @@ import NotFound from "./pages/NotFound";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import TodoList from "./pages/TodoList";
-import Trash from "./pages/Trash";
 import { ProtectedRoute } from "./components/common/ProtectedRoute";
 
 const queryClient = new QueryClient();
@@ -27,7 +26,6 @@ const App = () => (
           {/* Protected routes */}
           <Route element={<ProtectedRoute />}>
             <Route path="/" element={<TodoList />} />
-            <Route path="/trash" element={<Trash />} />
           </Route>
 
           {/* Fallback */}
