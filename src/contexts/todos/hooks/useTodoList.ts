@@ -3,7 +3,7 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
-  type UseMutateResult,
+  type UseMutationResult,
 } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/useAuth";
@@ -28,33 +28,33 @@ const activeStatusOptions: { value: ActiveTodoStatus; label: string }[] = [
   { value: "em andamento", label: "Em andamento" },
 ];
 
-type InsertTodoMutation = UseMutateResult<Todo, Error, string, unknown>;
-type ToggleCompletionMutation = UseMutateResult<
+type InsertTodoMutation = UseMutationResult<Todo, Error, string, unknown>;
+type ToggleCompletionMutation = UseMutationResult<
   Todo,
   Error,
   { id: string; completed: boolean },
   unknown
 >;
-type CompleteTodoMutation = UseMutateResult<Todo, Error, string, unknown>;
-type UpdateStatusMutation = UseMutateResult<
+type CompleteTodoMutation = UseMutationResult<Todo, Error, string, unknown>;
+type UpdateStatusMutation = UseMutationResult<
   Todo,
   Error,
   { id: string; status: ActiveTodoStatus },
   unknown
 >;
-type UpdateDatesMutation = UseMutateResult<
+type UpdateDatesMutation = UseMutationResult<
   Todo,
   Error,
   { id: string; startAt?: string | null; dueAt?: string | null },
   unknown
 >;
-type UpdateTitleMutation = UseMutateResult<
+type UpdateTitleMutation = UseMutationResult<
   Todo,
   Error,
   { id: string; title: string },
   unknown
 >;
-type DeleteTodoMutation = UseMutateResult<void, Error, string, unknown>;
+type DeleteTodoMutation = UseMutationResult<void, Error, string, unknown>;
 
 /**
  * Converte erros técnicos em mensagens legíveis para o usuário.
