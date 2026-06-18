@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { Header } from "@/components/common/Header";
-import { CheckIcon, TrashIcon, CalendarIcon, ClockIcon, CheckCircleIcon, PencilIcon, XIcon } from "lucide-react";
+import { CheckIcon, TrashIcon, CalendarIcon, ClockIcon, PencilIcon } from "lucide-react";
 import {
   getStatusBadge,
   useTodoList,
@@ -11,14 +11,13 @@ import {
   toISOString,
 } from "@/contexts/todos/hooks/useTodoList";
 import { ConfirmDialog } from "@/components/common/ConfirmDialog";
+import { ConfirmEditDialog } from "@/components/common/ConfirmEditDialog";
 import type { TodoStatus } from "@/contexts/todos/todos.types";
 
 /**
  * Página principal da lista de tarefas do usuário autenticado.
- * Inclui confirmação antes de excluir ou marcar como realizada.
- * Permite filtrar tarefas por status.
- * Permite definir data/hora de início e prazo final.
- * Permite editar todos os campos da tarefa (título, status, datas).
+ * Inclui confirmação antes de excluir, marcar como realizada ou salvar alterações.
+ * Permite filtrar tarefas por status, definir datas e editar todos os campos da tarefa.
  */
 export const TodoList = () => {
   const {
@@ -49,18 +48,27 @@ export const TodoList = () => {
   // Filter state
   const [filterStatus, setFilterStatus] = useState<TodoStatus | "all">("all");
 
-  // State to control which action needs confirmation
+  // Confirmation for delete / complete actions
   const [confirmState, setConfirmState] = useState<{
     type: "delete" | "complete";
     todoId: string;
   } | null>(null);
 
-  // State for editing all task fields
+  // Editing state
   const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editStatus, setEditStatus] = useState<ActiveTodoStatus>("pendente");
   const [editStartAt, setEditStartAt] = useState("");
   const [editDueAt, setEditDueAt] = useState("");
+
+  // Confirmation before persisting edits
+  const [confirmEdit, setConfirmEdit] = useState<{
+    todoId: string;
+    title: string;
+    status: ActiveTodoStatus;
+    startAt: string | null;
+    dueAt: string | null;
+  } | null>(null);
 
   const openConfirm = (type: "delete" | "complete", todoId: string) => {
     setConfirmState({ type, todoId });
@@ -101,25 +109,35 @@ export const TodoList = () => {
     setEditDueAt("");
   };
 
-  const saveEditTodo = (todoId: string) => {
+  const requestSaveEdit = (todoId: string) => {
     if (!editTitle.trim()) return;
-    
-    // Update title
-    updateTodoTitle.mutate({ id: todoId, title: editTitle.trim() });
-    
-    // Update status if changed
-    const currentTodo = todos.find(t => t.id === todoId);
-    if (currentTodo && currentTodo.status !== editStatus) {
-      updateStatus.mutate({ id: todoId, status: editStatus });
-    }
-    
-    // Update dates
-    updateDates.mutate({
-      id: todoId,
-      startAt: toISOString(editStartAt),
-      dueAt: toISOString(editDueAt),
+    setConfirmEdit({
+      todoId,
+      title: editTitle.trim(),
+      status: editStatus,
+      startAt: editStartAt ? toISOString(editStartAt) : null,
+      dueAt: editDueAt ? toISOString(editDueAt) : null,
     });
-    
+  };
+
+  const confirmSaveEdit = () => {
+    if (!confirmEdit) return;
+    const { todoId, title, status, startAt, dueAt } = confirmEdit;
+
+    // Title
+    updateTodoTitle.mutate({ id: todoId, title });
+
+    // Status (only if changed and not completed)
+    const currentTodo = todos.find((t) => t.id === todoId);
+    if (currentTodo && currentTodo.status !== status) {
+      updateStatus.mutate({ id: todoId, status });
+    }
+
+    // Dates
+    updateDates.mutate({ id: todoId, startAt, dueAt });
+
+    // Cleanup
+    setConfirmEdit(null);
     cancelEditTodo();
   };
 
@@ -171,7 +189,7 @@ export const TodoList = () => {
           </select>
         </div>
 
-        {/* Formulário de nova tarefa */}
+        {/* New task form */}
         <form
           className="mb-6 flex flex-col gap-3"
           onSubmit={(e) => {
@@ -255,12 +273,11 @@ export const TodoList = () => {
           </button>
         </form>
 
-        {/* Lista de tarefas filtradas */}
+        {/* Filtered todo list */}
         {filteredTodos.length > 0 ? (
           <ul className="space-y-2">
             {filteredTodos.map((todo) => {
-              const isCompleted =
-                todo.completed || todo.status === "realizada";
+              const isCompleted = todo.completed || todo.status === "realizada";
               const displayStatus = isCompleted ? "realizada" : todo.status;
               const isEditing = editingTodoId === todo.id;
 
@@ -274,7 +291,7 @@ export const TodoList = () => {
                   )}
                 >
                   {isEditing ? (
-                    // Edit mode - show all fields
+                    // Edit mode
                     <div className="space-y-3">
                       {/* Title */}
                       <div>
@@ -346,7 +363,7 @@ export const TodoList = () => {
                           Cancelar
                         </button>
                         <button
-                          onClick={() => saveEditTodo(todo.id)}
+                          onClick={() => requestSaveEdit(todo.id)}
                           className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
                           disabled={updateTodoTitle.isPending || updateStatus.isPending || updateDates.isPending}
                         >
@@ -383,7 +400,7 @@ export const TodoList = () => {
                           </span>
                         </div>
 
-                        {/* Status e datas */}
+                        {/* Status and dates */}
                         <div className="flex flex-wrap items-center gap-2 ml-7">
                           {isCompleted ? (
                             <span
@@ -417,7 +434,7 @@ export const TodoList = () => {
                             </select>
                           )}
 
-                          {/* Datas de início e prazo */}
+                          {/* Dates */}
                           {todo.start_at && (
                             <span className="flex items-center gap-1 text-xs text-muted-foreground">
                               <CalendarIcon className="h-3 w-3" />
@@ -440,7 +457,7 @@ export const TodoList = () => {
                         </div>
                       </div>
 
-                      {/* Botões de ação com confirmação */}
+                      {/* Action buttons */}
                       <div className="ml-2 flex flex-col items-center gap-2 shrink-0">
                         <button
                           onClick={() => startEditTodo(todo)}
@@ -471,15 +488,10 @@ export const TodoList = () => {
                           )}
                           disabled={completeTodo.isPending || isCompleted}
                           title={
-                            isCompleted
-                              ? "Tarefa já realizada"
-                              : "Marcar como realizada"
+                            isCompleted ? "Tarefa já realizada" : "Marcar como realizada"
                           }
                         >
-                          <CheckIcon
-                            className="h-4 w-4"
-                            aria-label="Marcar como realizada"
-                          />
+                          <CheckIcon className="h-4 w-4" aria-label="Marcar como realizada" />
                           <span className="mt-1">Realizada</span>
                         </button>
                       </div>
@@ -495,21 +507,24 @@ export const TodoList = () => {
           </p>
         )}
 
-        {/* Diálogo de confirmação */}
+        {/* Delete / Complete confirmation */}
         <ConfirmDialog
           open={!!confirmState}
           onOpenChange={closeConfirm}
-          title={
-            confirmState?.type === "delete"
-              ? "Confirmar exclusão"
-              : "Confirmar conclusão"
-          }
-          description={
-            confirmState?.type === "delete"
-              ? "Esta ação removerá a tarefa permanentemente. Deseja continuar?"
-              : "Marcar a tarefa como realizada a deixará com status \"realizada\". Deseja continuar?"
-          }
+          title={confirmState?.type === "delete" ? "Confirmar exclusão" : "Confirmar conclusão"}
+          description={confirmState?.type === "delete"
+            ? "Esta ação removerá a tarefa permanentemente. Deseja continuar?"
+            : "Marcar a tarefa como realizada a deixará com status \"realizada\". Deseja continuar?"}
           onConfirm={handleConfirm}
+        />
+
+        {/* Save edit confirmation */}
+        <ConfirmEditDialog
+          open={!!confirmEdit}
+          onOpenChange={() => setConfirmEdit(null)}
+          title="Confirmar alterações"
+          description="Deseja salvar as alterações feitas nesta tarefa?"
+          onConfirm={confirmSaveEdit}
         />
       </div>
     </div>
