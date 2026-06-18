@@ -11,7 +11,7 @@ import {
   completeTodo as completeTodoInDb,
   createTodo,
   fetchTodos,
-  removeTodo,
+  softDeleteTodo,
   toggleTodoCompletion as toggleTodoCompletionInDb,
   updateTodoDates as updateTodoDatesInDb,
   updateTodoStatus as updateTodoStatusInDb,
@@ -56,9 +56,6 @@ type UpdateTitleMutation = UseMutationResult<
 >;
 type DeleteTodoMutation = UseMutationResult<void, Error, string, unknown>;
 
-/**
- * Converte erros técnicos em mensagens legíveis para o usuário.
- */
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : "Erro desconhecido";
 }
@@ -108,8 +105,6 @@ export function formatDateTime(isoString: string | null | undefined): string {
  */
 export function toISOString(localDateTime: string): string | null {
   if (!localDateTime) return null;
-  // O input datetime-local retorna "YYYY-MM-DDTHH:MM"
-  // Adicionamos segundos e assumimos timezone local
   return new Date(localDateTime).toISOString();
 }
 
@@ -119,7 +114,6 @@ export function toISOString(localDateTime: string): string | null {
 export function toLocalDateTimeString(isoString: string | null): string {
   if (!isoString) return "";
   const date = new Date(isoString);
-  // Formato: YYYY-MM-DDTHH:MM
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -129,7 +123,7 @@ export function toLocalDateTimeString(isoString: string | null): string {
 }
 
 /**
- * Gerencia busca, criação, conclusão, atualização e exclusão de tarefas.
+ * Gerencia busca, criação, conclusão, atualização e exclusão (soft) de tarefas.
  */
 export function useTodoList() {
   const queryClient = useQueryClient();
@@ -139,9 +133,6 @@ export function useTodoList() {
   const [newStartAt, setNewStartAt] = useState("");
   const [newDueAt, setNewDueAt] = useState("");
 
-  /**
-   * Atualiza a query atual após mutações para manter a lista sincronizada.
-   */
   const invalidateTodos = () => {
     queryClient.invalidateQueries({
       queryKey: ["todos", user?.id ?? "anonymous"],
@@ -191,9 +182,7 @@ export function useTodoList() {
     onSuccess: (_data, variables) => {
       invalidateTodos();
       toast.success(
-        variables.completed
-          ? "Tarefa marcada como realizada."
-          : "Tarefa desmarcada.",
+        variables.completed ? "Tarefa marcada como realizada." : "Tarefa desmarcada."
       );
     },
     onError: (mutationError) => {
@@ -246,10 +235,10 @@ export function useTodoList() {
   });
 
   const deleteTodo: DeleteTodoMutation = useMutation({
-    mutationFn: removeTodo,
+    mutationFn: softDeleteTodo, // soft delete now
     onSuccess: () => {
       invalidateTodos();
-      toast.success("Tarefa excluída.");
+      toast.success("Tarefa excluída (soft delete).");
     },
     onError: (mutationError) => {
       toast.error(`Erro ao excluir: ${getErrorMessage(mutationError)}`);
