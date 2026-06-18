@@ -90,13 +90,15 @@ export const TodoList = () => {
   const startEditTodo = (todo: {
     id: string;
     title: string;
-    status: ActiveTodoStatus;
+    status: TodoStatus;
     start_at: string | null;
     due_at: string | null;
   }) => {
     setEditingTodoId(todo.id);
     setEditTitle(todo.title);
-    setEditStatus(todo.status);
+    // Convert status to ActiveTodoStatus, defaulting to "pendente" if "realizada"
+    const activeStatus: ActiveTodoStatus = todo.status === "realizada" ? "pendente" : todo.status;
+    setEditStatus(activeStatus);
     setEditStartAt(toLocalDateTimeString(todo.start_at));
     setEditDueAt(toLocalDateTimeString(todo.due_at));
   };
