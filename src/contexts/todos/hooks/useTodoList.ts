@@ -16,7 +16,7 @@ import {
   updateTodoDates as updateTodoDatesInDb,
   updateTodoStatus as updateTodoStatusInDb,
   updateTodoTitle as updateTodoTitleInDb,
-  restoreTodo,
+  restoreTodo as restoreTodoService,
 } from "@/contexts/todos/services/todos.service";
 import type {
   ActiveTodoStatus,
@@ -251,7 +251,7 @@ export function useTodoList() {
   });
 
   const restoreTodo: RestoreTodoMutation = useMutation({
-    mutationFn: restoreTodo,
+    mutationFn: restoreTodoService,
     onSuccess: () => {
       invalidateTodos();
       toast.success("Tarefa restaurada.");
