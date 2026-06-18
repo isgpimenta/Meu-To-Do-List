@@ -54,10 +54,8 @@ export const TodoList = () => {
     todoId: string;
   } | null>(null);
 
-  // Confirmation for adding a new task
-  const [confirmAdd, setConfirmAdd] = useState<string | null>(null);
-
-  // Editing state  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
+  // Editing state
+  const [editingTodoId, setEditingTodoId] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editStatus, setEditStatus] = useState<ActiveTodoStatus>("pendente");
   const [editStartAt, setEditStartAt] = useState("");
@@ -143,28 +141,6 @@ export const TodoList = () => {
     cancelEditTodo();
   };
 
-  // Handle form submission with confirmation
-  const handleAddTodo = () => {
-    const trimmedTitle = newTitle.trim();
-    if (trimmedTitle) {
-      setConfirmAdd(trimmedTitle);
-    }
-  };
-
-  const confirmAddTodo = () => {
-    if (confirmAdd) {
-      insertTodo.mutate(confirmAdd);
-      setNewTitle("");
-      setNewStatus("pendente");
-      setNewStartAt("");
-      setNewDueAt("");
-    }
-  };
-
-  const closeAddTodo = () => {
-    setConfirmAdd(null);
-  };
-
   // Filter todos based on selected status
   const filteredTodos = todos.filter((todo) => {
     if (filterStatus === "all") return true;
@@ -218,7 +194,7 @@ export const TodoList = () => {
           className="mb-6 flex flex-col gap-3"
           onSubmit={(e) => {
             e.preventDefault();
-            handleAddTodo();
+            if (newTitle.trim()) insertTodo.mutate(newTitle.trim());
           }}
         >
           <div className="flex items-center gap-2">
@@ -231,7 +207,8 @@ export const TodoList = () => {
               value={newTitle}
               onChange={(e) => setNewTitle(e.target.value)}
             />
-            <select              value={newStatus}
+            <select
+              value={newStatus}
               onChange={(e) => setNewStatus(e.target.value as ActiveTodoStatus)}
               className={cn(
                 "rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary",
@@ -296,17 +273,6 @@ export const TodoList = () => {
           </button>
         </form>
 
-        {/* Confirmation dialog for adding a new task */}
-        {confirmAdd && (
-          <ConfirmDialog
-            open={true}
-            onOpenChange={closeAddTodo}
-            title="Confirmar adição"
-            description={`Deseja adicionar a tarefa "${confirmAdd}"?`}
-            onConfirm={confirmAddTodo}
-          />
-        )}
-
         {/* Filtered todo list */}
         {filteredTodos.length > 0 ? (
           <ul className="space-y-2">
@@ -325,7 +291,8 @@ export const TodoList = () => {
                   )}
                 >
                   {isEditing ? (
-                    // Edit mode                    <div className="space-y-3">
+                    // Edit mode
+                    <div className="space-y-3">
                       {/* Title */}
                       <div>
                         <label className="block text-sm font-medium mb-1">Título</label>
@@ -334,7 +301,8 @@ export const TodoList = () => {
                           value={editTitle}
                           onChange={(e) => setEditTitle(e.target.value)}
                           className="w-full rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
-                          autoFocus                        />
+                          autoFocus
+                        />
                       </div>
 
                       {/* Status */}
@@ -377,7 +345,8 @@ export const TodoList = () => {
                             <ClockIcon className="h-3.5 w-3.5" />
                             Prazo
                           </label>
-                          <input                            type="datetime-local"
+                          <input
+                            type="datetime-local"
                             value={editDueAt}
                             onChange={(e) => setEditDueAt(e.target.value)}
                             className="w-full rounded border border-input px-3 py-2 focus:outline-none focus:ring-2 focus:ring-primary"
@@ -547,6 +516,15 @@ export const TodoList = () => {
             ? "Esta ação removerá a tarefa permanentemente. Deseja continuar?"
             : "Marcar a tarefa como realizada a deixará com status \"realizada\". Deseja continuar?"}
           onConfirm={handleConfirm}
+        />
+
+        {/* Save edit confirmation */}
+        <ConfirmEditDialog
+          open={!!confirmEdit}
+          onOpenChange={() => setConfirmEdit(null)}
+          title="Confirmar alterações"
+          description="Deseja salvar as alterações feitas nesta tarefa?"
+          onConfirm={confirmSaveEdit}
         />
       </div>
     </div>
