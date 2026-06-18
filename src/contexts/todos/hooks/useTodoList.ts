@@ -235,7 +235,7 @@ export function useTodoList() {
   });
 
   const deleteTodo: DeleteTodoMutation = useMutation({
-    mutationFn: softDeleteTodo,
+    mutationFn: softDeleteTodo, // soft delete now
     onSuccess: () => {
       invalidateTodos();
       toast.success("Tarefa excluída (soft delete).");
